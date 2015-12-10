@@ -79,34 +79,6 @@
                 "Unit": "Count"
             },
             "Type": "AWS::CloudWatch::Alarm"
-        },
-        "LambdaMonkeyLambdaThrottlesAlarm": {
-            "Properties": {
-                "AlarmActions": [
-                    {
-                        "Ref": "LambdaMonkeyAlarmTopic"
-                    }
-                ],
-                "AlarmDescription": "Enters ALARM state because we have function invocations being throttled. See 'Throttles' section on the following link: http://docs.aws.amazon.com/lambda/latest/dg/monitoring-functions-metrics.html for more information.",
-                "AlarmName": "lambdaMonkey/LambdaThrottles",
-                "ComparisonOperator": "GreaterThanOrEqualToThreshold",
-                "Dimensions": [
-                    {
-                        "Name": "FunctionName",
-                        "Value": {
-                            "Ref": "LambdaFunctionName"
-                        }
-                    }
-                ],
-                "EvaluationPeriods": "1",
-                "MetricName": "Throttles",
-                "Namespace": "AWS/Lambda",
-                "Period": "60",
-                "Statistic": "Sum",
-                "Threshold": "1",
-                "Unit": "Count"
-            },
-            "Type": "AWS::CloudWatch::Alarm"
         }
     }
 }

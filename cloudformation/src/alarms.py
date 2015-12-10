@@ -95,34 +95,6 @@ t.add_resource(
     )
 )
 
-t.add_resource(
-    Alarm(
-        "LambdaMonkeyLambdaThrottlesAlarm",
-        AlarmName="lambdaMonkey/LambdaThrottles",
-        AlarmDescription="Enters ALARM state because we have function "
-                         "invocations being throttled. See 'Throttles' "
-                         "section on the following link: "
-                         "http://docs.aws.amazon.com/lambda/latest/dg/"
-                         "monitoring-functions-metrics.html for more "
-                         "information.",
-        Namespace="AWS/Lambda",
-        MetricName="Throttles",
-        Dimensions=[
-            MetricDimension(
-                Name="FunctionName",
-                Value=Ref(lambda_function_name)
-            ),
-        ],
-        Statistic="Sum",
-        Period="60",
-        EvaluationPeriods="1",
-        Threshold="1",
-        Unit="Count",
-        ComparisonOperator="GreaterThanOrEqualToThreshold",
-        AlarmActions=[Ref(alarm_topic), ],
-    )
-)
-
 '''
 t.add_resource(
     Alarm(
