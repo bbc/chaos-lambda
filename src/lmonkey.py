@@ -62,8 +62,15 @@ def terminate_targets(ec2, targets):
 
     instance_ids = [instance_id for (asg_name, instance_id) in targets]
     response = ec2.terminate_instances(InstanceIds=instance_ids)
+
+    results = []
     for i in response.get("TerminatingInstances", []):
-        log("result", i["InstanceId"], "is", i["CurrentState"]["Name"])
+        results.append((i["InstanceId"], i["CurrentState"]["Name"]))
+
+    for instance_id, state in results:
+        log("result", instance_id, "is", state)
+
+    return results
 
 
 def lambda_monkey(region):

@@ -200,6 +200,24 @@ class TestTerminateTargets(PatchingTestCase):
             ("i-22222222", "s3")
         ]))
 
+    def test_returns_termination_results(self):
+        ec2 = mock.Mock()
+        # We're cheating here and returning results that are unrelated to the
+        # list passed to terminate_targets
+        ec2.terminate_instances.return_value = {
+            "TerminatingInstances": [
+                {"InstanceId": "i-00000000", "CurrentState": {"Name": "s1"}},
+                {"InstanceId": "i-11111111", "CurrentState": {"Name": "s2"}},
+                {"InstanceId": "i-22222222", "CurrentState": {"Name": "s3"}}
+            ]
+        }
+        results = lmonkey.terminate_targets(ec2, [])
+        self.assertEqual(set(results), set([
+            ("i-00000000", "s1"),
+            ("i-11111111", "s2"),
+            ("i-22222222", "s3")
+        ]))
+
 
 class TestLambdaMonkey(PatchingTestCase):
 
