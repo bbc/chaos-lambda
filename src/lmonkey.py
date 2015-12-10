@@ -9,6 +9,11 @@ import boto3
 TERMINATE_PROBABILITY = 1.0 / 6.0
 
 
+def log(*args):
+    timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    print(timestamp, *args)
+
+
 def get_asg_instance_id(asg):
     instances = asg.get("Instances", [])
     if len(instances) == 0:
@@ -38,13 +43,14 @@ def lambda_monkey(region):
     if len(targets) == 0:
         return
 
-    timestamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     for asg_name, instance_id in targets:
-        print(timestamp, "targeting", instance_id, "in", asg_name)
+        log("targeting", instance_id, "in", asg_name)
 
     instance_ids = [instance_id for (asg_name, instance_id) in targets]
     ec2 = boto3.client("ec2", region_name=region)
-    ec2.terminate_instances(InstanceIds=instance_ids)
+    response = ec2.terminate_instances(InstanceIds=instance_ids)
+    for i in response.get("TerminatingInstances", []):
+        log("result", i["InstanceId"], "is", i["CurrentState"]["Name"])
 
 
 def handler(event, context):
