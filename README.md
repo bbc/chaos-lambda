@@ -33,7 +33,9 @@ as follows (enter the `Name` first as changing it resets the other fields):
 * Description: `Assume things fail`
 * Schedule expression: `cron(0 10-16 ? * MON-FRI *)`
 
-Ensure `Enable now` is selected and click the `Submit` button.
+Ensure `Enable now` is selected and click the `Submit` button.  You can disable
+or re-enable the hourly trigger at any time by clicking the
+`Enabled`/`Disabled` link in the `State` column.
 
 To receive notifications if the lambda function fails for any reason, create
 another stack using the `cloudformation/templates/alarms.json` template.  This
