@@ -28,17 +28,29 @@ class TestGetASGTag(PatchingTestCase):
         self.assertEqual(lmonkey.get_asg_tag(asg, "name"), "")
 
 
+class TestSafeFloat(PatchingTestCase):
+
+    def test_returns_float_if_string_is_valid(self):
+        self.assertEqual(lmonkey.safe_float("1.0", 0.5), 1.0)
+        self.assertEqual(lmonkey.safe_float("0.0", 0.5), 0.0)
+        self.assertEqual(lmonkey.safe_float(" 1.0 ", 0.5), 1.0)
+
+    def test_returns_default_if_string_is_invalid(self):
+        self.assertEqual(lmonkey.safe_float("not a number", 0.5), 0.5)
+
+
 class TestGetASGInstanceId(PatchingTestCase):
 
     patch_list = (
         "lmonkey.get_asg_tag",
+        "lmonkey.safe_float",
         "random.choice",
         "random.random",
     )
 
     def setUp(self):
         super(TestGetASGInstanceId, self).setUp()
-        self.get_asg_tag.side_effect = lambda asg, key, default: default
+        self.safe_float.side_effect = lambda s, default: default
 
     def test_returns_None_if_there_are_no_instances(self):
         self.random.return_value = 1.0
@@ -63,16 +75,21 @@ class TestGetASGInstanceId(PatchingTestCase):
         self.choice.side_effect = lambda l: l[0]
         self.random.return_value = 0.5
 
-        self.get_asg_tag.side_effect = lambda a, k, d: "0.0"
+        self.safe_float.side_effect = lambda s, default: 0.0
         asg = {"Instances": [{"InstanceId": "i-1234abcd"}]}
         self.assertEqual(lmonkey.get_asg_instance_id(asg), None)
+
         self.get_asg_tag.assert_called_once_with(
             asg,
             lmonkey.PROBABILITY_TAG,
+            mock.ANY
+        )
+        self.safe_float.assert_called_once_with(
+            self.get_asg_tag.return_value,
             lmonkey.DEFAULT_PROBABILITY
         )
 
-        self.get_asg_tag.side_effect = lambda a, k, d: "1.0"
+        self.safe_float.side_effect = lambda s, default: 1.0
         asg = {"Instances": [{"InstanceId": "i-1234abcd"}]}
         self.assertEqual(lmonkey.get_asg_instance_id(asg), "i-1234abcd")
 

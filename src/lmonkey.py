@@ -23,11 +23,18 @@ def get_asg_tag(asg, name, default=None):
     return default
 
 
+def safe_float(s, default):
+    try:
+        return float(s)
+    except ValueError:
+        return default
+
+
 def get_asg_instance_id(asg):
     instances = asg.get("Instances", [])
 
-    p = get_asg_tag(asg, PROBABILITY_TAG, DEFAULT_PROBABILITY)
-    probability = float(p)
+    value = get_asg_tag(asg, PROBABILITY_TAG, "")
+    probability = safe_float(value, DEFAULT_PROBABILITY)
 
     if len(instances) == 0:
         return None
