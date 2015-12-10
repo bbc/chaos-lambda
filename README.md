@@ -11,7 +11,7 @@ hours, helping teams to build services that handle them gracefully.
 Whenever the lambda is triggered it will potentially terminate one instance per
 Auto Scaling Group in the region.  By default the probability of terminating an
 ASG's instance is 1 in 6.  This probability can be overridden by setting a
-"lambda-monkey-termination" tag on the ASG with a value between 0.0 and 1.0,
+`lambda-monkey-termination` tag on the ASG with a value between 0.0 and 1.0,
 where 0.0 means never terminate and 1.0 means always terminate.
 
 
