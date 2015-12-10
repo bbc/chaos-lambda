@@ -180,3 +180,18 @@ class TestLambdaMonkey(PatchingTestCase):
             ("i-11111111", "s2"),
             ("i-22222222", "s3")
         ]))
+
+
+class TestHandler(PatchingTestCase):
+
+    patch_list = (
+        "lmonkey.lambda_monkey",
+    )
+
+    def test_extracts_region_from_function_arn(self):
+        context = mock.Mock()
+        for region in ("eu-west-1", "sp-moonbase-1"):
+            context.invoked_function_arn = "arn:aws:lambda:" + region + ":..."
+            self.lambda_monkey.reset_mock()
+            lmonkey.handler(None, context)
+            self.lambda_monkey.assert_called_once_with(region)
