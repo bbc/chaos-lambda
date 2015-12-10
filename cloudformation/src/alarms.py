@@ -12,7 +12,6 @@ t.add_description("Lambda monkey alarms")
 alarm_email = t.add_parameter(
     Parameter(
         "LambdaMonkeyAlarmEmail",
-        Default="FMOTGCloudTeam@bbc.co.uk",
         Description="Email address to notify if there are any "
                     "operational issues",
         Type="String",

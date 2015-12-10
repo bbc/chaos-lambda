@@ -6,7 +6,6 @@
             "Type": "String"
         },
         "LambdaMonkeyAlarmEmail": {
-            "Default": "FMOTGCloudTeam@bbc.co.uk",
             "Description": "Email address to notify if there are any operational issues",
             "Type": "String"
         }
