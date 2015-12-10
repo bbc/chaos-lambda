@@ -40,24 +40,6 @@ alarm_topic = t.add_resource(
 
 t.add_resource(
     Alarm(
-        "Liveliness",
-        AlarmName="lambdaMonkey/Liveliness",
-        AlarmDescription="Enters ALARM state if the lambda monkey hasn't "
-                         "triggered within a seven day window.",
-        Namespace=METRIC_NAMESPACE,
-        MetricName="triggered",
-        EvaluationPeriods="1",
-        Period="604800",
-        Statistic="SampleCount",
-        ComparisonOperator="LessThanThreshold",
-        Threshold="1",
-        Unit="None",
-        AlarmActions=[Ref(alarm_topic)],
-    )
-)
-
-t.add_resource(
-    Alarm(
         "LambdaMonkeyLambdaErrorAlarm",
         AlarmName="lambdaMonkey/LambdaError",
         AlarmDescription="Enters ALARM state because we have received a lamdba "
@@ -140,5 +122,25 @@ t.add_resource(
         AlarmActions=[Ref(alarm_topic), ],
     )
 )
+
+'''
+t.add_resource(
+    Alarm(
+        "Liveliness",
+        AlarmName="lambdaMonkey/Liveliness",
+        AlarmDescription="Enters ALARM state if the lambda monkey hasn't "
+                         "triggered within a seven day window.",
+        Namespace=METRIC_NAMESPACE,
+        MetricName="triggered",
+        EvaluationPeriods="1",
+        Period="604800",
+        Statistic="SampleCount",
+        ComparisonOperator="LessThanThreshold",
+        Threshold="1",
+        Unit="None",
+        AlarmActions=[Ref(alarm_topic)],
+    )
+)
+'''
 
 print(t.to_json())

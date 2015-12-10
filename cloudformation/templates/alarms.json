@@ -107,26 +107,6 @@
                 "Unit": "Count"
             },
             "Type": "AWS::CloudWatch::Alarm"
-        },
-        "Liveliness": {
-            "Properties": {
-                "AlarmActions": [
-                    {
-                        "Ref": "LambdaMonkeyAlarmTopic"
-                    }
-                ],
-                "AlarmDescription": "Enters ALARM state if the lambda monkey hasn't triggered within a seven day window.",
-                "AlarmName": "lambdaMonkey/Liveliness",
-                "ComparisonOperator": "LessThanThreshold",
-                "EvaluationPeriods": "1",
-                "MetricName": "triggered",
-                "Namespace": "BBC/LAMBDA-MONKEY",
-                "Period": "604800",
-                "Statistic": "SampleCount",
-                "Threshold": "1",
-                "Unit": "None"
-            },
-            "Type": "AWS::CloudWatch::Alarm"
         }
     }
 }
