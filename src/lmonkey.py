@@ -54,5 +54,6 @@ def lambda_monkey(region):
 
 
 def handler(event, context):
+    log("triggered")
     region = context.invoked_function_arn.split(":")[3]
     lambda_monkey(region)
