@@ -141,12 +141,72 @@ class TestGetTargets(PatchingTestCase):
         self.assertEqual(targets, [("b", "i-22222222")])
 
 
+class TestTerminateTargets(PatchingTestCase):
+
+    patch_list = (
+        "lmonkey.log",
+    )
+
+    def get_log_lines(self, name):
+        lines = []
+        for args, kwargs in self.log.call_args_list:
+            parts = " ".join(args).split(" ")
+            if parts[0] == name:
+                lines.append(parts)
+        return lines
+
+    def test_terminates_target_instances(self):
+        ec2 = mock.Mock()
+        ec2.terminate_instances.return_value = {}
+        lmonkey.terminate_targets(ec2, [
+            ("a", "i-11111111"),
+            ("b", "i-22222222")
+        ])
+        ec2.terminate_instances.assert_called_once_with(
+            InstanceIds=["i-11111111", "i-22222222"]
+        )
+
+    def test_parseable_log_line_for_each_targeted_instance(self):
+        ec2 = mock.Mock()
+        ec2.terminate_instances.return_value = {}
+        lmonkey.terminate_targets(ec2, [
+            ("asg-name-one", "i-00000000"),
+            ("second-asg", "i-11111111"),
+            ("the-third-asg", "i-22222222")
+        ])
+        logged = self.get_log_lines("targeting")
+        self.assertEqual(set((part[1], part[3]) for part in logged), set([
+            ("i-00000000", "asg-name-one"),
+            ("i-11111111", "second-asg"),
+            ("i-22222222", "the-third-asg")
+        ]))
+
+    def test_parseable_log_line_for_each_termination_result(self):
+        ec2 = mock.Mock()
+        # We're cheating here and returning results that are unrelated to the
+        # list passed to terminate_targets
+        ec2.terminate_instances.return_value = {
+            "TerminatingInstances": [
+                {"InstanceId": "i-00000000", "CurrentState": {"Name": "s1"}},
+                {"InstanceId": "i-11111111", "CurrentState": {"Name": "s2"}},
+                {"InstanceId": "i-22222222", "CurrentState": {"Name": "s3"}}
+            ]
+        }
+        lmonkey.terminate_targets(ec2, [("a", "i-11111111")])
+        logged = self.get_log_lines("result")
+        self.assertEqual(set((part[1], part[3]) for part in logged), set([
+            ("i-00000000", "s1"),
+            ("i-11111111", "s2"),
+            ("i-22222222", "s3")
+        ]))
+
+
 class TestLambdaMonkey(PatchingTestCase):
 
     patch_list = (
         "lmonkey.boto3",
         "lmonkey.get_targets",
-        "lmonkey.log",
+        "lmonkey.terminate_targets",
     )
 
     def setUp(self):
@@ -162,19 +222,10 @@ class TestLambdaMonkey(PatchingTestCase):
             c = self.clients[name] = mock.Mock(region_name=region_name)
         return c
 
-    def get_log_lines(self, name):
-        lines = []
-        for args, kwargs in self.log.call_args_list:
-            parts = " ".join(args).split(" ")
-            if parts[0] == name:
-                lines.append(parts)
-        return lines
-
     def test_does_nothing_if_no_targets(self):
         self.get_targets.return_value = []
         lmonkey.lambda_monkey("sp-moonbase-1")
-        ec2 = self.clients.get("ec2", mock.Mock())
-        self.assertEqual(ec2.terminate_instances.call_count, 0)
+        self.assertEqual(self.terminate_targets.call_count, 0)
 
     def test_uses_autoscaling_service_in_correct_region(self):
         self.get_targets.return_value = []
@@ -183,61 +234,13 @@ class TestLambdaMonkey(PatchingTestCase):
         self.assertEqual(autoscaling, self.clients["autoscaling"])
         self.assertEqual(autoscaling.region_name, "sp-moonbase-1")
 
-    def test_terminates_target_instances(self):
-        self.get_targets.return_value = [
-            ("a", "i-11111111"),
-            ("b", "i-22222222")
-        ]
+    def test_terminates_target_instances_in_correct_region(self):
+        targets = [("a", "i-11111111"), ("b", "i-22222222")]
+        self.get_targets.return_value = targets
         ec2 = self.make_client("ec2", region_name="sp-moonbase-1")
-        ec2.terminate_instances.return_value = {}
-        lmonkey.lambda_monkey("sp-moonbase-1")
-        ec2.terminate_instances.assert_called_once_with(
-            InstanceIds=["i-11111111", "i-22222222"]
-        )
-
-    def test_uses_ec2_service_in_correct_region(self):
-        self.get_targets.return_value = [("a", "i-11111111")]
-        ec2 = self.make_client("ec2", region_name="sp-moonbase-1")
-        ec2.terminate_instances.return_value = {}
         lmonkey.lambda_monkey("sp-moonbase-1")
         # Above triggers self.make_client, which checks the region name
-        self.assertNotEqual(ec2.terminate_instances.call_count, 0)
-
-    def test_parseable_log_line_for_each_targeted_instance(self):
-        self.get_targets.return_value = [
-            ("asg-name-one", "i-00000000"),
-            ("second-asg", "i-11111111"),
-            ("the-third-asg", "i-22222222")
-        ]
-        ec2 = self.make_client("ec2", region_name="sp-moonbase-1")
-        ec2.terminate_instances.return_value = {}
-        lmonkey.lambda_monkey("sp-moonbase-1")
-        logged = self.get_log_lines("targeting")
-        self.assertEqual(set((part[1], part[3]) for part in logged), set([
-            ("i-00000000", "asg-name-one"),
-            ("i-11111111", "second-asg"),
-            ("i-22222222", "the-third-asg")
-        ]))
-
-    def test_parseable_log_line_for_each_termination_result(self):
-        self.get_targets.return_value = [("a", "i-11111111")]
-        ec2 = self.make_client("ec2", region_name="sp-moonbase-1")
-        # We're cheating here and returning results that are unrelated to the
-        # list in get_targets, to save duplication
-        ec2.terminate_instances.return_value = {
-            "TerminatingInstances": [
-                {"InstanceId": "i-00000000", "CurrentState": {"Name": "s1"}},
-                {"InstanceId": "i-11111111", "CurrentState": {"Name": "s2"}},
-                {"InstanceId": "i-22222222", "CurrentState": {"Name": "s3"}}
-            ]
-        }
-        lmonkey.lambda_monkey("sp-moonbase-1")
-        logged = self.get_log_lines("result")
-        self.assertEqual(set((part[1], part[3]) for part in logged), set([
-            ("i-00000000", "s1"),
-            ("i-11111111", "s2"),
-            ("i-22222222", "s3")
-        ]))
+        self.terminate_targets.assert_called_once_with(ec2, targets)
 
 
 class TestHandler(PatchingTestCase):
