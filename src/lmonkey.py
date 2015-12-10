@@ -6,7 +6,8 @@ import time
 import boto3
 
 
-TERMINATE_PROBABILITY = 1.0 / 6.0
+PROBABILITY_TAG = "lambda-monkey-termination"
+DEFAULT_PROBABILITY = 1.0 / 6.0
 
 
 def log(*args):
@@ -14,11 +15,23 @@ def log(*args):
     print(timestamp, *args)
 
 
+def get_asg_tag(asg, name, default=None):
+    name = name.lower()
+    for tag in asg.get("Tags", []):
+        if tag.get("Key", "").lower() == name:
+            return tag.get("Value", "")
+    return default
+
+
 def get_asg_instance_id(asg):
     instances = asg.get("Instances", [])
+
+    p = get_asg_tag(asg, PROBABILITY_TAG, DEFAULT_PROBABILITY)
+    probability = float(p)
+
     if len(instances) == 0:
         return None
-    elif random.random() > TERMINATE_PROBABILITY:
+    elif random.random() >= probability:
         return None
     else:
         return random.choice(instances).get("InstanceId", None)

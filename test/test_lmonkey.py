@@ -9,12 +9,36 @@ mock_imports([
 import lmonkey
 
 
+class TestGetASGTag(PatchingTestCase):
+
+    def test_finds_tag_key_case_insensitively(self):
+        asg = {"Tags": [{"Key": "name", "Value": "success"}]}
+        self.assertEqual(lmonkey.get_asg_tag(asg, "NAME"), "success")
+        self.assertEqual(lmonkey.get_asg_tag(asg, "name"), "success")
+        self.assertEqual(lmonkey.get_asg_tag(asg, "NaMe"), "success")
+
+    def test_returns_default_if_key_not_found(self):
+        asg = {"Tags": []}
+        self.assertEqual(lmonkey.get_asg_tag(asg, "blah"), None)
+        self.assertEqual(lmonkey.get_asg_tag(asg, "blah", "abc"), "abc")
+
+    def test_returns_empty_string_if_tag_has_no_value(self):
+        # As far as I can tell this should never happen, but just in case...
+        asg = {"Tags": [{"Key": "name"}]}
+        self.assertEqual(lmonkey.get_asg_tag(asg, "name"), "")
+
+
 class TestGetASGInstanceId(PatchingTestCase):
 
     patch_list = (
+        "lmonkey.get_asg_tag",
         "random.choice",
         "random.random",
     )
+
+    def setUp(self):
+        super(TestGetASGInstanceId, self).setUp()
+        self.get_asg_tag.side_effect = lambda asg, key, default: default
 
     def test_returns_None_if_there_are_no_instances(self):
         self.random.return_value = 1.0
@@ -32,6 +56,23 @@ class TestGetASGInstanceId(PatchingTestCase):
     def test_returns_instance_id_if_probability_test_succeeds(self):
         self.choice.side_effect = lambda l: l[0]
         self.random.return_value = 0.0
+        asg = {"Instances": [{"InstanceId": "i-1234abcd"}]}
+        self.assertEqual(lmonkey.get_asg_instance_id(asg), "i-1234abcd")
+
+    def test_probability_can_be_set_by_asg_tag(self):
+        self.choice.side_effect = lambda l: l[0]
+        self.random.return_value = 0.5
+
+        self.get_asg_tag.side_effect = lambda a, k, d: "0.0"
+        asg = {"Instances": [{"InstanceId": "i-1234abcd"}]}
+        self.assertEqual(lmonkey.get_asg_instance_id(asg), None)
+        self.get_asg_tag.assert_called_once_with(
+            asg,
+            lmonkey.PROBABILITY_TAG,
+            lmonkey.DEFAULT_PROBABILITY
+        )
+
+        self.get_asg_tag.side_effect = lambda a, k, d: "1.0"
         asg = {"Instances": [{"InstanceId": "i-1234abcd"}]}
         self.assertEqual(lmonkey.get_asg_instance_id(asg), "i-1234abcd")
 
