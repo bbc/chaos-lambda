@@ -186,6 +186,7 @@ class TestHandler(PatchingTestCase):
 
     patch_list = (
         "lmonkey.lambda_monkey",
+        "lmonkey.log",
     )
 
     def test_extracts_region_from_function_arn(self):
@@ -195,3 +196,9 @@ class TestHandler(PatchingTestCase):
             self.lambda_monkey.reset_mock()
             lmonkey.handler(None, context)
             self.lambda_monkey.assert_called_once_with(region)
+
+    def test_parseable_log_line_for_trigger(self):
+        context = mock.Mock()
+        context.invoked_function_arn = "arn:aws:lambda:sp-moonbase-1:..."
+        lmonkey.handler(None, context)
+        self.log.assert_called_once_with("triggered", "sp-moonbase-1")
