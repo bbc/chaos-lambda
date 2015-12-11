@@ -30,14 +30,25 @@ def safe_float(s, default):
         return default
 
 
+def get_asg_probability(asg):
+    value = get_asg_tag(asg, PROBABILITY_TAG, None)
+    if value is None:
+        return DEFAULT_PROBABILITY
+
+    probability = safe_float(value, None)
+    if probability is not None and 0.0 <= probability <= 1.0:
+        return probability
+
+    log("bad-probability", value, "in", asg["AutoScalingGroupName"])
+    return DEFAULT_PROBABILITY
+
+
 def get_asg_instance_id(asg):
     instances = asg.get("Instances", [])
     if len(instances) == 0:
         return None
 
-    value = get_asg_tag(asg, PROBABILITY_TAG, "")
-    probability = safe_float(value, DEFAULT_PROBABILITY)
-
+    probability = get_asg_probability(asg)
     if random.random() >= probability:
         return None
     else:

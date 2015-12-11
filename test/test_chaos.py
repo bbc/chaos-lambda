@@ -39,18 +39,71 @@ class TestSafeFloat(PatchingTestCase):
         self.assertEqual(chaos.safe_float("not a number", 0.5), 0.5)
 
 
+class TestGetASGProbability(PatchingTestCase):
+
+    patch_list = (
+        "chaos.DEFAULT_PROBABILITY",
+        "chaos.PROBABILITY_TAG",
+        "chaos.get_asg_tag",
+        "chaos.log"
+    )
+
+    def get_log_lines(self, name):
+        lines = []
+        for args, kwargs in self.log.call_args_list:
+            parts = " ".join(args).split(" ")
+            if parts[0] == name:
+                lines.append(parts)
+        return lines
+
+    def test_returns_default_probability_if_no_tag_set(self):
+        self.get_asg_tag.return_value = None
+        p = chaos.get_asg_probability({})
+        self.assertEqual(p, self.DEFAULT_PROBABILITY)
+
+    def test_queries_probability_tag(self):
+        self.get_asg_tag.return_value = "0.1"
+        chaos.get_asg_probability(mock.sentinel.asg)
+        self.get_asg_tag.assert_called_once_with(
+            mock.sentinel.asg,
+            self.PROBABILITY_TAG,
+            mock.ANY
+        )
+
+    def test_returns_probability_from_tag_value_if_valid(self):
+        self.get_asg_tag.return_value = "0.1"
+        p = chaos.get_asg_probability({"AutoScalingGroupName": "x"})
+        self.assertEqual(p, 0.1)
+
+    def test_returns_default_probability_if_tag_value_is_invalid(self):
+        self.get_asg_tag.return_value = "blah"
+        p = chaos.get_asg_probability({"AutoScalingGroupName": "x"})
+        self.assertEqual(p, self.DEFAULT_PROBABILITY)
+
+    def test_returns_default_probability_if_tag_value_is_out_of_range(self):
+        for value in ("-42", "-1.2", "1.2", "9"):
+            self.get_asg_tag.return_value = value
+            p = chaos.get_asg_probability({"AutoScalingGroupName": "x"})
+            self.assertEqual(p, self.DEFAULT_PROBABILITY)
+
+    def test_logs_parseable_error_if_tag_value_is_invalid(self):
+        for value in ("blah", "-42"):
+            self.log.reset_mock()
+            self.get_asg_tag.return_value = value
+            chaos.get_asg_probability({"AutoScalingGroupName": "ASGNameHere"})
+            lines = self.get_log_lines("bad-probability")
+            self.assertEqual(set((p[1], p[3]) for p in lines), set([
+                (value, "ASGNameHere")
+            ]))
+
+
 class TestGetASGInstanceId(PatchingTestCase):
 
     patch_list = (
-        "chaos.get_asg_tag",
-        "chaos.safe_float",
+        "chaos.get_asg_probability",
         "random.choice",
         "random.random",
     )
-
-    def setUp(self):
-        super(TestGetASGInstanceId, self).setUp()
-        self.safe_float.side_effect = lambda s, default: default
 
     def test_returns_None_if_there_are_no_instances(self):
         self.random.return_value = 1.0
@@ -61,37 +114,31 @@ class TestGetASGInstanceId(PatchingTestCase):
 
     def test_returns_None_if_probability_test_fails(self):
         self.choice.side_effect = lambda l: l[0]
+        self.get_asg_probability.return_value = 0.5
         self.random.return_value = 1.0
         asg = {"Instances": [{"InstanceId": "i-1234abcd"}]}
         self.assertEqual(chaos.get_asg_instance_id(asg), None)
+        self.get_asg_probability.assert_called_once_with(asg)
 
     def test_returns_instance_id_if_probability_test_succeeds(self):
         self.choice.side_effect = lambda l: l[0]
+        self.get_asg_probability.return_value = 0.5
         self.random.return_value = 0.0
         asg = {"Instances": [{"InstanceId": "i-1234abcd"}]}
         self.assertEqual(chaos.get_asg_instance_id(asg), "i-1234abcd")
+        self.get_asg_probability.assert_called_once_with(asg)
 
-    def test_probability_can_be_set_by_asg_tag(self):
-        self.choice.side_effect = lambda l: l[0]
-        self.random.return_value = 0.5
-
-        self.safe_float.side_effect = lambda s, default: 0.0
-        asg = {"Instances": [{"InstanceId": "i-1234abcd"}]}
-        self.assertEqual(chaos.get_asg_instance_id(asg), None)
-
-        self.get_asg_tag.assert_called_once_with(
-            asg,
-            chaos.PROBABILITY_TAG,
-            mock.ANY
-        )
-        self.safe_float.assert_called_once_with(
-            self.get_asg_tag.return_value,
-            chaos.DEFAULT_PROBABILITY
-        )
-
-        self.safe_float.side_effect = lambda s, default: 1.0
-        asg = {"Instances": [{"InstanceId": "i-1234abcd"}]}
-        self.assertEqual(chaos.get_asg_instance_id(asg), "i-1234abcd")
+    def test_returns_random_choice_of_instance_ids(self):
+        self.get_asg_probability.return_value = 0.5
+        self.random.return_value = 0.0
+        instances = [
+            {"InstanceId": "i-00000000"},
+            {"InstanceId": "i-11111111"},
+            {"InstanceId": "i-22222222"}
+        ]
+        i = chaos.get_asg_instance_id({"Instances": instances})
+        self.choice.assert_called_once_with(instances)
+        self.assertEqual(i, self.choice.return_value.get.return_value)
 
 
 class TestGetTargets(PatchingTestCase):
