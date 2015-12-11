@@ -39,7 +39,8 @@ def get_asg_probability(asg):
     if probability is not None and 0.0 <= probability <= 1.0:
         return probability
 
-    log("bad-probability", value, "in", asg["AutoScalingGroupName"])
+    asg_name = asg["AutoScalingGroupName"]
+    log("bad-probability", "[" + value + "]", "in", asg_name)
     return DEFAULT_PROBABILITY
 
 

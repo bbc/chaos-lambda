@@ -1,3 +1,5 @@
+import re
+
 import mock
 
 from base import mock_imports, PatchingTestCase
@@ -51,7 +53,7 @@ class TestGetASGProbability(PatchingTestCase):
     def get_log_lines(self, name):
         lines = []
         for args, kwargs in self.log.call_args_list:
-            parts = " ".join(args).split(" ")
+            parts = re.findall(r"\[.*?\]|[^ ]+", " ".join(args))
             if parts[0] == name:
                 lines.append(parts)
         return lines
@@ -87,13 +89,13 @@ class TestGetASGProbability(PatchingTestCase):
             self.assertEqual(p, self.DEFAULT_PROBABILITY)
 
     def test_logs_parseable_error_if_tag_value_is_invalid(self):
-        for value in ("blah", "-42"):
+        for value in ("blah", "-42", "0.1 0.2"):
             self.log.reset_mock()
             self.get_asg_tag.return_value = value
             chaos.get_asg_probability({"AutoScalingGroupName": "ASGNameHere"})
             lines = self.get_log_lines("bad-probability")
             self.assertEqual(set((p[1], p[3]) for p in lines), set([
-                (value, "ASGNameHere")
+                ("[" + value + "]", "ASGNameHere")
             ]))
 
 
@@ -197,7 +199,7 @@ class TestTerminateTargets(PatchingTestCase):
     def get_log_lines(self, name):
         lines = []
         for args, kwargs in self.log.call_args_list:
-            parts = " ".join(args).split(" ")
+            parts = re.findall(r"\[.*?\]|[^ ]+", " ".join(args))
             if parts[0] == name:
                 lines.append(parts)
         return lines
