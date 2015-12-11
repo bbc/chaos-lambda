@@ -11,4 +11,4 @@ clean:
 zip: chaos-lambda.zip
 
 chaos-lambda.zip: src/chaos.py
-	zip -j $@ src/chaos.py
+	zip -j $@ $^
