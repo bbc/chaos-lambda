@@ -3,15 +3,15 @@ from troposphere.cloudwatch import Alarm, MetricDimension
 from troposphere.sns import Subscription, Topic
 
 
-METRIC_NAMESPACE = "BBC/LAMBDA-MONKEY"
+METRIC_NAMESPACE = "BBC/CHAOS-LAMBDA"
 
 t = Template()
 
-t.add_description("Lambda monkey alarms")
+t.add_description("Chaos Lambda alarms")
 
 alarm_email = t.add_parameter(
     Parameter(
-        "LambdaMonkeyAlarmEmail",
+        "ChaosLambdaAlarmEmail",
         Description="Email address to notify if there are any "
                     "operational issues",
         Type="String",
@@ -28,7 +28,7 @@ lambda_function_name = t.add_parameter(
 
 alarm_topic = t.add_resource(
     Topic(
-        "LambdaMonkeyAlarmTopic",
+        "ChaosLambdaAlarmTopic",
         Subscription=[
             Subscription(
                 Endpoint=Ref(alarm_email),
@@ -40,8 +40,8 @@ alarm_topic = t.add_resource(
 
 t.add_resource(
     Alarm(
-        "LambdaMonkeyLambdaErrorAlarm",
-        AlarmName="lambdaMonkey/LambdaError",
+        "ChaosLambdaErrorAlarm",
+        AlarmName="chaosLambda/LambdaError",
         AlarmDescription="Enters ALARM state because we have received a lamdba "
                          "error. See 'Errors' section on the following link: "
                          "http://docs.aws.amazon.com/lambda/latest/dg/"
@@ -67,8 +67,8 @@ t.add_resource(
 
 t.add_resource(
     Alarm(
-        "LambdaMonkeyLambdaDurationAlarm",
-        AlarmName="lambdaMonkey/LambdaDuration",
+        "ChaosLambdaDurationAlarm",
+        AlarmName="chaosLambda/LambdaDuration",
         AlarmDescription="Enters ALARM state because we have functions taking "
                          "longer than expected. Please adjust the available "
                          "lambda process time accordingly, then replay any "
@@ -99,8 +99,8 @@ t.add_resource(
 t.add_resource(
     Alarm(
         "Liveliness",
-        AlarmName="lambdaMonkey/Liveliness",
-        AlarmDescription="Enters ALARM state if the lambda monkey hasn't "
+        AlarmName="chaosLambda/Liveliness",
+        AlarmDescription="Enters ALARM state if the Chaos Lambda hasn't "
                          "triggered within a seven day window.",
         Namespace=METRIC_NAMESPACE,
         MetricName="triggered",

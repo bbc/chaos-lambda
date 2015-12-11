@@ -3,7 +3,7 @@ from troposphere.iam import Role, Policy
 from troposphere.awslambda import Function, Code
 
 t = Template()
-t.add_description("CloudFormation template for the Lambda Monkey")
+t.add_description("CloudFormation template for the Chaos Lambda")
 
 s3_bucket = t.add_parameter(Parameter(
     "S3Bucket",
@@ -18,7 +18,7 @@ s3_key = t.add_parameter(Parameter(
 ))
 
 lambda_policy = Policy(
-    PolicyName="LambdaMonkeyPolicy",
+    PolicyName="ChaosLambdaPolicy",
     PolicyDocument={
         "Version": "2012-10-17",
         "Statement": [
@@ -43,7 +43,7 @@ lambda_policy = Policy(
 )
 
 lambda_role = Role(
-    "LambdaMonkeyRole",
+    "ChaosLambdaRole",
     AssumeRolePolicyDocument={
         "Version": "2012-10-17",
         "Statement": [{
@@ -61,13 +61,13 @@ t.add_resource(lambda_role)
 
 lambda_function = t.add_resource(
     Function(
-        "LambdaMonkeyFunction",
+        "ChaosLambdaFunction",
         Code=Code(
             S3Bucket=Ref(s3_bucket),
             S3Key=Ref(s3_key)
         ),
         Description="CloudFormation Lambda",
-        Handler="lmonkey.handler",
+        Handler="chaos.handler",
         MemorySize=128,
         Role=GetAtt(lambda_role, "Arn"),
         Runtime="python2.7",
@@ -76,9 +76,9 @@ lambda_function = t.add_resource(
 )
 
 t.add_output(Output(
-    "LambdaMonkeyFunctionOutput",
+    "ChaosLambdaFunctionOutput",
     Value=Ref(lambda_function),
-    Description="The Lambda Monkey Function"
+    Description="The Chaos Lambda Function"
 ))
 
 print(t.to_json())

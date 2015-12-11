@@ -1,10 +1,10 @@
 {
-    "Description": "CloudFormation template for the Lambda Monkey",
+    "Description": "CloudFormation template for the Chaos Lambda",
     "Outputs": {
-        "LambdaMonkeyFunctionOutput": {
-            "Description": "The Lambda Monkey Function",
+        "ChaosLambdaFunctionOutput": {
+            "Description": "The Chaos Lambda Function",
             "Value": {
-                "Ref": "LambdaMonkeyFunction"
+                "Ref": "ChaosLambdaFunction"
             }
         }
     },
@@ -19,7 +19,7 @@
         }
     },
     "Resources": {
-        "LambdaMonkeyFunction": {
+        "ChaosLambdaFunction": {
             "Properties": {
                 "Code": {
                     "S3Bucket": {
@@ -30,11 +30,11 @@
                     }
                 },
                 "Description": "CloudFormation Lambda",
-                "Handler": "lmonkey.handler",
+                "Handler": "chaos.handler",
                 "MemorySize": 128,
                 "Role": {
                     "Fn::GetAtt": [
-                        "LambdaMonkeyRole",
+                        "ChaosLambdaRole",
                         "Arn"
                     ]
                 },
@@ -43,7 +43,7 @@
             },
             "Type": "AWS::Lambda::Function"
         },
-        "LambdaMonkeyRole": {
+        "ChaosLambdaRole": {
             "Properties": {
                 "AssumeRolePolicyDocument": {
                     "Statement": [
@@ -85,7 +85,7 @@
                             ],
                             "Version": "2012-10-17"
                         },
-                        "PolicyName": "LambdaMonkeyPolicy"
+                        "PolicyName": "ChaosLambdaPolicy"
                     }
                 ]
             },

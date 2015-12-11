@@ -2,7 +2,7 @@ import json
 from troposphere import Template, Ref, Parameter
 from troposphere.logs import MetricFilter, MetricTransformation
 
-METRIC_NAMESPACE = "BBC/LAMBDA-MONKEY"
+METRIC_NAMESPACE = "BBC/CHAOS-LAMBDA"
 
 t = Template()
 

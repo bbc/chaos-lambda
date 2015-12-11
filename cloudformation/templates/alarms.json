@@ -1,22 +1,22 @@
 {
-    "Description": "Lambda monkey alarms",
+    "Description": "Chaos Lambda alarms",
     "Parameters": {
-        "LambdaFunctionName": {
-            "Description": "The name of the lambda function",
+        "ChaosLambdaAlarmEmail": {
+            "Description": "Email address to notify if there are any operational issues",
             "Type": "String"
         },
-        "LambdaMonkeyAlarmEmail": {
-            "Description": "Email address to notify if there are any operational issues",
+        "LambdaFunctionName": {
+            "Description": "The name of the lambda function",
             "Type": "String"
         }
     },
     "Resources": {
-        "LambdaMonkeyAlarmTopic": {
+        "ChaosLambdaAlarmTopic": {
             "Properties": {
                 "Subscription": [
                     {
                         "Endpoint": {
-                            "Ref": "LambdaMonkeyAlarmEmail"
+                            "Ref": "ChaosLambdaAlarmEmail"
                         },
                         "Protocol": "email"
                     }
@@ -24,15 +24,15 @@
             },
             "Type": "AWS::SNS::Topic"
         },
-        "LambdaMonkeyLambdaDurationAlarm": {
+        "ChaosLambdaDurationAlarm": {
             "Properties": {
                 "AlarmActions": [
                     {
-                        "Ref": "LambdaMonkeyAlarmTopic"
+                        "Ref": "ChaosLambdaAlarmTopic"
                     }
                 ],
                 "AlarmDescription": "Enters ALARM state because we have functions taking longer than expected. Please adjust the available lambda process time accordingly, then replay any  failed events. See 'Duration' section on the  following link: http://docs.aws.amazon.com/lambda/latest/dg/monitoring-functions-metrics.html for more information.",
-                "AlarmName": "lambdaMonkey/LambdaDuration",
+                "AlarmName": "chaosLambda/LambdaDuration",
                 "ComparisonOperator": "GreaterThanThreshold",
                 "Dimensions": [
                     {
@@ -52,15 +52,15 @@
             },
             "Type": "AWS::CloudWatch::Alarm"
         },
-        "LambdaMonkeyLambdaErrorAlarm": {
+        "ChaosLambdaErrorAlarm": {
             "Properties": {
                 "AlarmActions": [
                     {
-                        "Ref": "LambdaMonkeyAlarmTopic"
+                        "Ref": "ChaosLambdaAlarmTopic"
                     }
                 ],
                 "AlarmDescription": "Enters ALARM state because we have received a lamdba error. See 'Errors' section on the following link: http://docs.aws.amazon.com/lambda/latest/dg/monitoring-functions-metrics.html for more information.",
-                "AlarmName": "lambdaMonkey/LambdaError",
+                "AlarmName": "chaosLambda/LambdaError",
                 "ComparisonOperator": "GreaterThanOrEqualToThreshold",
                 "Dimensions": [
                     {

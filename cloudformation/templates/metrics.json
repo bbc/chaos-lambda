@@ -16,7 +16,7 @@
                 "MetricTransformations": [
                     {
                         "MetricName": "triggered",
-                        "MetricNamespace": "BBC/LAMBDA-MONKEY",
+                        "MetricNamespace": "BBC/CHAOS-LAMBDA",
                         "MetricValue": "1"
                     }
                 ]
