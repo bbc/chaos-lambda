@@ -1,4 +1,4 @@
-.PHONY: test clean zip
+.PHONY: all test clean zip
 
 all: test zip
 
