@@ -6,7 +6,7 @@ import time
 import boto3
 
 
-PROBABILITY_TAG = "lambda-monkey-termination"
+PROBABILITY_TAG = "chaos-lambda-termination"
 DEFAULT_PROBABILITY = 1.0 / 6.0
 
 
@@ -32,13 +32,13 @@ def safe_float(s, default):
 
 def get_asg_instance_id(asg):
     instances = asg.get("Instances", [])
+    if len(instances) == 0:
+        return None
 
     value = get_asg_tag(asg, PROBABILITY_TAG, "")
     probability = safe_float(value, DEFAULT_PROBABILITY)
 
-    if len(instances) == 0:
-        return None
-    elif random.random() >= probability:
+    if random.random() >= probability:
         return None
     else:
         return random.choice(instances).get("InstanceId", None)
@@ -73,7 +73,7 @@ def terminate_targets(ec2, targets):
     return results
 
 
-def lambda_monkey(region):
+def chaos_lambda(region):
     autoscaling = boto3.client("autoscaling", region_name=region)
     targets = get_targets(autoscaling)
     if len(targets) != 0:
@@ -84,4 +84,4 @@ def lambda_monkey(region):
 def handler(event, context):
     region = context.invoked_function_arn.split(":")[3]
     log("triggered", region)
-    lambda_monkey(region)
+    chaos_lambda(region)
