@@ -42,3 +42,59 @@ another stack using the `cloudformation/templates/alarms.json` template.  This
 takes the lambda function name (something similar to
 `chaos-lambda-ChaosLambdaFunction-EM2XNWWNZTPW`) and the email address to
 send the alerts to.
+
+
+# Log messages
+
+Chaos Lambda log lines always start with a timestamp and a word specifying the
+event type.  The timestamp is of the form `YYYY-MM-DDThh:mm:ssZ`, eg
+`2015-12-11T14:00:37Z`, and the timezone will always be `Z`.  The different
+event types are described below.
+
+## bad-probability
+
+`<timestamp> bad-probability [<value>] in <asg name>`
+
+Example:
+
+`2015-12-11T14:07:21Z bad-probability [not often] in test-app-ASG-7LJI5SY4VX6T`
+
+If the value of the `chaos-lambda-termination` tag isn't a number between `0.0`
+and `1.0` inclusive then it will be logged in one of these lines.  The square
+brackets around the value allow CloudWatch Logs to find the full value even if
+it contains spaces.
+
+## result
+
+`<timestamp> result <instance id> is <state>`
+
+Example:
+
+`2015-12-11T14:00:40Z result i-fe705d77 is shutting-down`
+
+After asking EC2 to terminate each of the targeted instances the new state of
+each is logged with a `result` line.  The `<state>` value is taken from the
+`code` property of the `InstanceState` AWS type described at
+http://docs.aws.amazon.com/AWSEC2/latest/APIReference/API_InstanceState.html
+
+## targeting
+
+`<timestamp> targeting <instance id> in <asg name>`
+
+Example:
+
+`2015-12-11T14:00:38Z targeting i-168f9eaf in test-app-ASG-1LOMEKEVBXXXS`
+
+The `targeting` lines list all of the instances that are about to be
+terminated, before the `TerminateInstances` call occurs.
+
+## triggered
+
+`<timestamp> triggered <region>`
+
+Example:
+
+`2015-12-11T14:00:37Z triggered eu-west-1`
+
+Generated when the lambda is triggered, indicating the region that will be
+affected.
