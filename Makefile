@@ -6,9 +6,9 @@ test:
 	nosetests -v
 
 clean:
-	rm -f lambda-monkey.zip
+	rm -f chaos-lambda.zip
 
-zip: lambda-monkey.zip
+zip: chaos-lambda.zip
 
-lambda-monkey.zip: src/lmonkey.py
-	zip -j $@ src/lmonkey.py
+chaos-lambda.zip: src/chaos.py
+	zip -j $@ src/chaos.py
