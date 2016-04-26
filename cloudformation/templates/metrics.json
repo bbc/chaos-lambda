@@ -1,5 +1,5 @@
 {
-    "Description": "Metrics and filters for Github Monitor",
+    "Description": "Metrics and filters for Chaos Lambda",
     "Parameters": {
         "LambdaLogGroupName": {
             "Description": "The name of the log group for the lambda function.",

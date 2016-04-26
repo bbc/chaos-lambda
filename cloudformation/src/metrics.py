@@ -15,7 +15,7 @@ log_group = t.add_parameter(
 )
 
 t.add_description(
-    "Metrics and filters for Github Monitor"
+    "Metrics and filters for Chaos Lambda"
 )
 
 lambda_metrics = {
