@@ -143,33 +143,78 @@ class TestGetASGInstanceId(PatchingTestCase):
         self.assertEqual(i, self.choice.return_value.get.return_value)
 
 
+class TestAllASGs(PatchingTestCase):
+
+    def test_uses_paginator_for_describe_auto_scaling_groups(self):
+        autoscaling = mock.Mock()
+        paginator = autoscaling.get_paginator.return_value
+        paginator.paginate.return_value = iter([])
+        asgs = chaos.get_all_asgs(autoscaling)
+        list(asgs)  # force evaluation of the generator
+        autoscaling.get_paginator.assert_called_once_with(
+            "describe_auto_scaling_groups"
+        )
+        paginator.paginate.assert_called_once_with()
+
+    def test_yields_asgs_from_each_response(self):
+        autoscaling = mock.Mock()
+        paginator = autoscaling.get_paginator.return_value
+        paginator.paginate.return_value = iter([
+            {"AutoScalingGroups": [mock.sentinel.one, mock.sentinel.two]},
+            {"AutoScalingGroups": [mock.sentinel.three]},
+            {"AutoScalingGroups": [mock.sentinel.four, mock.sentinel.five]}
+        ])
+        asgs = chaos.get_all_asgs(autoscaling)
+        self.assertEqual(set(asgs), set([
+            mock.sentinel.one,
+            mock.sentinel.two,
+            mock.sentinel.three,
+            mock.sentinel.four,
+            mock.sentinel.five
+        ]))
+
+    def test_ignores_responses_with_missing_AutoScalingGroups_key(self):
+        autoscaling = mock.Mock()
+        paginator = autoscaling.get_paginator.return_value
+        paginator.paginate.return_value = iter([
+            {"AutoScalingGroups": [mock.sentinel.one]},
+            {},
+            {"AutoScalingGroups": [mock.sentinel.two]}
+        ])
+        asgs = chaos.get_all_asgs(autoscaling)
+        self.assertEqual(set(asgs), set([
+            mock.sentinel.one,
+            mock.sentinel.two
+        ]))
+
+
 class TestGetTargets(PatchingTestCase):
 
     patch_list = (
+        "chaos.get_all_asgs",
         "chaos.get_asg_instance_id",
     )
 
-    def setUp(self):
-        super(TestGetTargets, self).setUp()
-        self.autoscaling = mock.Mock()
-        self.describe = self.autoscaling.describe_auto_scaling_groups
+    def test_requests_all_auto_scaling_groups(self):
+        autoscaling = mock.Mock()
+        self.get_all_asgs.return_value = iter([])
+        chaos.get_targets(autoscaling)
+        self.get_all_asgs.assert_called_once_with(autoscaling)
 
     def test_returns_empty_list_if_no_auto_scaling_groups(self):
-        self.describe.return_value = {"AutoScalingGroups": []}
-        self.assertEqual(chaos.get_targets(self.autoscaling), [])
-        self.describe.return_value = {}
-        self.assertEqual(chaos.get_targets(self.autoscaling), [])
+        autoscaling = mock.Mock()
+        self.get_all_asgs.return_value = iter([])
+        self.assertEqual(chaos.get_targets(autoscaling), [])
 
     def test_gets_instance_from_each_asg(self):
+        autoscaling = mock.Mock()
         self.get_asg_instance_id.side_effect = lambda asg: asg["Instances"][0]
-        self.describe.return_value = {
-            "AutoScalingGroups": [
-                {"AutoScalingGroupName": "a", "Instances": ["i-11111111"]},
-                {"AutoScalingGroupName": "b", "Instances": ["i-22222222"]},
-                {"AutoScalingGroupName": "c", "Instances": ["i-33333333"]}
-            ]
-        }
-        targets = chaos.get_targets(self.autoscaling)
+        self.get_all_asgs.return_value = iter([
+            {"AutoScalingGroupName": "a", "Instances": ["i-11111111"]},
+            {"AutoScalingGroupName": "b", "Instances": ["i-22222222"]},
+            {"AutoScalingGroupName": "c", "Instances": ["i-33333333"]}
+        ])
+        targets = chaos.get_targets(autoscaling)
         self.assertEqual(set(targets), set([
             ("a", "i-11111111"),
             ("b", "i-22222222"),
@@ -177,16 +222,15 @@ class TestGetTargets(PatchingTestCase):
         ]))
 
     def test_ignores_asgs_with_no_instances(self):
+        autoscaling = mock.Mock()
         self.get_asg_instance_id.side_effect = lambda asg: \
             asg["Instances"][0] if len(asg["Instances"]) != 0 else None
-        self.describe.return_value = {
-            "AutoScalingGroups": [
-                {"AutoScalingGroupName": "a", "Instances": []},
-                {"AutoScalingGroupName": "b", "Instances": ["i-22222222"]},
-                {"AutoScalingGroupName": "c", "Instances": []}
-            ]
-        }
-        targets = chaos.get_targets(self.autoscaling)
+        self.get_all_asgs.return_value = iter([
+            {"AutoScalingGroupName": "a", "Instances": []},
+            {"AutoScalingGroupName": "b", "Instances": ["i-22222222"]},
+            {"AutoScalingGroupName": "c", "Instances": []}
+        ])
+        targets = chaos.get_targets(autoscaling)
         self.assertEqual(targets, [("b", "i-22222222")])
 
 

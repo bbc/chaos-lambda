@@ -56,15 +56,19 @@ def get_asg_instance_id(asg):
         return random.choice(instances).get("InstanceId", None)
 
 
-def get_targets(autoscaling):
-    response = autoscaling.describe_auto_scaling_groups()
+def get_all_asgs(autoscaling):
+    paginator = autoscaling.get_paginator("describe_auto_scaling_groups")
+    for response in paginator.paginate():
+        for asg in response.get("AutoScalingGroups", []):
+            yield asg
 
+
+def get_targets(autoscaling):
     targets = []
-    for asg in response.get("AutoScalingGroups", []):
+    for asg in get_all_asgs(autoscaling):
         instance_id = get_asg_instance_id(asg)
         if instance_id is not None:
             targets.append((asg["AutoScalingGroupName"], instance_id))
-
     return targets
 
 
