@@ -143,7 +143,7 @@ class TestGetASGInstanceId(PatchingTestCase):
         self.assertEqual(i, self.choice.return_value.get.return_value)
 
 
-class TestAllASGs(PatchingTestCase):
+class TestGetAllASGs(PatchingTestCase):
 
     def test_uses_paginator_for_describe_auto_scaling_groups(self):
         autoscaling = mock.Mock()
