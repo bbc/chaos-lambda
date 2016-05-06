@@ -1,3 +1,4 @@
 .*.sw?
 *.py?
 lambda-monkey.zip
+venv
