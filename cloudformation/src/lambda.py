@@ -25,7 +25,9 @@ lambda_policy = Policy(
             {
                 "Effect": "Allow",
                 "Action": [
-                    "logs:*",
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
                 ],
                 "Resource": "arn:aws:logs:*:*:*"
             },
