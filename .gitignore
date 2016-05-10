@@ -2,3 +2,4 @@
 *.py?
 lambda-monkey.zip
 venv
+.DS_Store
