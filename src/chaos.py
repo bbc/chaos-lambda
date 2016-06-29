@@ -7,7 +7,7 @@ import boto3
 
 
 PROBABILITY_TAG = "chaos-lambda-termination"
-DEFAULT_PROBABILITY = 1.0 / 6.0
+DEFAULT_PROBABILITY = 0
 
 
 def log(*args):
