@@ -1,6 +1,6 @@
 from troposphere import Output, Ref, Template, Parameter, GetAtt
-from troposphere.iam import Role, Policy
 from troposphere.awslambda import Function, Code
+from troposphere.iam import Role, Policy
 
 t = Template()
 t.add_description("CloudFormation template for the Chaos Lambda")
