@@ -6,5 +6,11 @@ all: $(TARGETS)
 clean:
 	rm -f $(TARGETS)
 
-templates/%.json: src/%.py
-	python $< > $@
+templates/%.json: src/%.py venv
+	venv/bin/python $< > $@
+
+venv: requirements.txt
+	type virtualenv >/dev/null
+	rm -rf $@
+	trap 'touch -d @1234567890 $@' EXIT; virtualenv $@ && venv/bin/pip install -r $<
+	touch -r $< $@
