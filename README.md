@@ -8,14 +8,8 @@ until it happens in the early hours of the morning during a holiday.
 Chaos Lambda increases the rate at which these failures occur during business
 hours, helping teams to build services that handle them gracefully.
 
-Whenever the lambda is triggered it will potentially terminate one instance per
-Auto Scaling Group in the region.  By default the probability of terminating an
-ASG's instance is 1 in 6.  This probability can be overridden by setting a
-`chaos-lambda-termination` tag on the ASG with a value between 0.0 and 1.0,
-where 0.0 means never terminate and 1.0 means always terminate.
 
-
-# Quick setup
+# Setup
 
 Run `make zip` to create a `chaos-lambda.zip` file containing the lambda
 function.  Upload it to a S3 bucket in your account, taking note of the bucket
@@ -23,25 +17,33 @@ name (eg `my-bucket`) and the path (eg `lambdas/chaos-lambda.zip`).
 
 Create the lambda function via CloudFormation using the
 `cloudformation/templates/lambda.json` template, entering the bucket name and
-path.
-
-In the AWS console go to the `Lambda` service, select the newly created lambda
-function, go into the `Event sources` tab, and click `Add event source`.
-Choose `Scheduled Event` for the `Event source type`, then fill in the fields
-as follows (enter the `Name` first as changing it resets the other fields):
-* Name: `business-hours`
-* Description: `Assume things fail`
-* Schedule expression: `cron(0 10-16 ? * MON-FRI *)`
-
-Ensure `Enable now` is selected and click the `Submit` button.  You can disable
-or re-enable the hourly trigger at any time by clicking the
-`Enabled`/`Disabled` link in the `State` column.
+path.  Adjust the `Schedule` parameter if the default run times (once per hour
+between 10am and 4pm, Monday to Friday) don't suit you; see
+http://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html
+for documentation on the syntax.
 
 To receive notifications if the lambda function fails for any reason, create
 another stack using the `cloudformation/templates/alarms.json` template.  This
 takes the lambda function name (something similar to
 `chaos-lambda-ChaosLambdaFunction-EM2XNWWNZTPW`) and the email address to
 send the alerts to.
+
+
+# Probability of termination
+
+Whenever the lambda is triggered it will potentially terminate one instance per
+Auto Scaling Group in the region.  By default the probability of terminating an
+ASG's instance is 1 in 6.  This probability can be overridden by setting a
+`chaos-lambda-termination` tag on the ASG with a value between 0.0 and 1.0,
+where 0.0 means never terminate and 1.0 means always terminate.
+
+
+# Enabling/disabling
+
+The lambda is triggered by a CloudWatch Events rule, the name of which can be
+found from the `ChaosLambdaFunctionOutput` outputs of the lambda stack.  Locate
+this rule in the AWS console under the Rules section of the CloudWatch service,
+and you can disable or enable it via the `Actions` button.
 
 
 # Log messages

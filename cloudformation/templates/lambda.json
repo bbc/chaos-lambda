@@ -6,6 +6,12 @@
             "Value": {
                 "Ref": "ChaosLambdaFunction"
             }
+        },
+        "ChaosLambdaRuleOutput": {
+            "Description": "Rule used to trigger the Chaos Lambda",
+            "Value": {
+                "Ref": "ChaosLambdaRule"
+            }
         }
     },
     "Parameters": {
@@ -15,6 +21,11 @@
         },
         "S3Key": {
             "Description": "S3Key Parameter",
+            "Type": "String"
+        },
+        "Schedule": {
+            "Default": "cron(0 10-16 ? * MON-FRI *)",
+            "Description": "Schedule on which to run the Chaos Lambda",
             "Type": "String"
         }
     },
@@ -92,6 +103,27 @@
                 ]
             },
             "Type": "AWS::IAM::Role"
+        },
+        "ChaosLambdaRule": {
+            "Properties": {
+                "Description": "Trigger Chaos Lambda according to a schedule",
+                "ScheduleExpression": {
+                    "Ref": "Schedule"
+                },
+                "State": "ENABLED",
+                "Targets": [
+                    {
+                        "Arn": {
+                            "Fn::GetAtt": [
+                                "ChaosLambdaFunction",
+                                "Arn"
+                            ]
+                        },
+                        "Id": "ChaosLambdaRuleTarget"
+                    }
+                ]
+            },
+            "Type": "AWS::Events::Rule"
         }
     }
 }

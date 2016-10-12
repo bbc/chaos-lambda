@@ -1,6 +1,7 @@
 from troposphere import Output, Ref, Template, Parameter, GetAtt
 from troposphere.awslambda import Function, Code
 from troposphere.iam import Role, Policy
+from troposphere.events import Rule, Target
 
 t = Template()
 t.add_description("CloudFormation template for the Chaos Lambda")
@@ -15,6 +16,13 @@ s3_key = t.add_parameter(Parameter(
     "S3Key",
     Description="S3Key Parameter",
     Type="String",
+))
+
+chaos_schedule = t.add_parameter(Parameter(
+    "Schedule",
+    Description="Schedule on which to run the Chaos Lambda",
+    Default="cron(0 10-16 ? * MON-FRI *)",
+    Type="String"
 ))
 
 lambda_policy = Policy(
@@ -77,10 +85,25 @@ lambda_function = t.add_resource(
     )
 )
 
+chaos_lambda_rule = t.add_resource(Rule(
+    "ChaosLambdaRule",
+    Description="Trigger Chaos Lambda according to a schedule",
+    State="ENABLED",
+    ScheduleExpression=Ref(chaos_schedule),
+    Targets=[
+        Target(Arn=GetAtt(lambda_function, "Arn"), Id="ChaosLambdaRuleTarget")
+    ]
+))
+
 t.add_output(Output(
     "ChaosLambdaFunctionOutput",
     Value=Ref(lambda_function),
     Description="The Chaos Lambda Function"
+))
+t.add_output(Output(
+    "ChaosLambdaRuleOutput",
+    Value=Ref(chaos_lambda_rule),
+    Description="Rule used to trigger the Chaos Lambda"
 ))
 
 print(t.to_json())
