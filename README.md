@@ -41,7 +41,7 @@ where 0.0 means never terminate and 1.0 means always terminate.
 # Enabling/disabling
 
 The lambda is triggered by a CloudWatch Events rule, the name of which can be
-found from the `ChaosLambdaFunctionOutput` outputs of the lambda stack.  Locate
+found from the `ChaosLambdaFunctionOutput` output of the lambda stack.  Locate
 this rule in the AWS console under the Rules section of the CloudWatch service,
 and you can disable or enable it via the `Actions` button.
 
