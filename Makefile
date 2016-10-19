@@ -3,9 +3,9 @@
 all: test zip
 
 venv: test-requirements.txt
-	type pip virtualenv >/dev/null
-	test -d venv || virtualenv --no-site-packages venv
-	trap 'touch -d @1234567890 venv' EXIT; venv/bin/pip install -r test-requirements.txt
+	type virtualenv >/dev/null
+	if [ -d venv ]; then rm -rf venv; fi
+	trap "touch -t 200902132331.30 venv" EXIT; virtualenv venv && venv/bin/pip install -r test-requirements.txt
 	touch -r test-requirements.txt venv
 
 test: venv
