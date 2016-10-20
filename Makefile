@@ -4,9 +4,9 @@ all: test zip
 
 venv: test-requirements.txt
 	type virtualenv >/dev/null
-	if [ -d venv ]; then rm -rf venv; fi
-	trap "touch -t 200902132331.30 venv" EXIT; virtualenv venv && venv/bin/pip install -r test-requirements.txt
-	touch -r test-requirements.txt venv
+	rm -rf $@
+	trap "touch -t 200902132331.30 $@" EXIT; virtualenv $@ && venv/bin/pip install -r $<
+	touch -r $< $@
 
 test: venv
 	venv/bin/nosetests -v
