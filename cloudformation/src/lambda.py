@@ -1,4 +1,4 @@
-from troposphere import Output, Ref, Template, Parameter, GetAtt
+from troposphere import Equals, GetAtt, If, Output, Parameter, Ref, Template
 from troposphere.awslambda import Function, Code
 from troposphere.iam import Role, Policy
 from troposphere.events import Rule, Target
@@ -24,6 +24,17 @@ chaos_schedule = t.add_parameter(Parameter(
     Default="cron(0 10-16 ? * MON-FRI *)",
     Type="String"
 ))
+
+default_mode = t.add_parameter(Parameter(
+    "DefaultMode",
+    Description="Default mode for untagged ASGs",
+    AllowedValues=["on", "off"],
+    Default="on",
+    Type="String"
+))
+
+default_on_condition = "DefaultOnCondition"
+t.add_condition(default_on_condition, Equals(Ref(default_mode), "on"))
 
 lambda_policy = Policy(
     PolicyName="ChaosLambdaPolicy",
@@ -77,7 +88,11 @@ lambda_function = t.add_resource(
             S3Key=Ref(s3_key)
         ),
         Description="CloudFormation Lambda",
-        Handler="chaos.handler",
+        Handler=If(
+            default_on_condition,
+            "chaos.handler",
+            "chaos.handler_default_off"
+        ),
         MemorySize=128,
         Role=GetAtt(lambda_role, "Arn"),
         Runtime="python2.7",

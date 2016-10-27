@@ -44,7 +44,6 @@ class TestSafeFloat(PatchingTestCase):
 class TestGetASGProbability(PatchingTestCase):
 
     patch_list = (
-        "chaos.DEFAULT_PROBABILITY",
         "chaos.PROBABILITY_TAG",
         "chaos.get_asg_tag",
         "chaos.log"
@@ -60,12 +59,12 @@ class TestGetASGProbability(PatchingTestCase):
 
     def test_returns_default_probability_if_no_tag_set(self):
         self.get_asg_tag.return_value = None
-        p = chaos.get_asg_probability({})
-        self.assertEqual(p, self.DEFAULT_PROBABILITY)
+        p = chaos.get_asg_probability({}, mock.sentinel.default)
+        self.assertEqual(p, mock.sentinel.default)
 
     def test_queries_probability_tag(self):
         self.get_asg_tag.return_value = "0.1"
-        chaos.get_asg_probability(mock.sentinel.asg)
+        chaos.get_asg_probability(mock.sentinel.asg, None)
         self.get_asg_tag.assert_called_once_with(
             mock.sentinel.asg,
             self.PROBABILITY_TAG,
@@ -74,25 +73,30 @@ class TestGetASGProbability(PatchingTestCase):
 
     def test_returns_probability_from_tag_value_if_valid(self):
         self.get_asg_tag.return_value = "0.1"
-        p = chaos.get_asg_probability({"AutoScalingGroupName": "x"})
+        p = chaos.get_asg_probability({"AutoScalingGroupName": "x"}, None)
         self.assertEqual(p, 0.1)
 
     def test_returns_default_probability_if_tag_value_is_invalid(self):
+        asg = {"AutoScalingGroupName": "x"}
+        default = mock.sentinel.default
         self.get_asg_tag.return_value = "blah"
-        p = chaos.get_asg_probability({"AutoScalingGroupName": "x"})
-        self.assertEqual(p, self.DEFAULT_PROBABILITY)
+        p = chaos.get_asg_probability(asg, default)
+        self.assertEqual(p, default)
 
     def test_returns_default_probability_if_tag_value_is_out_of_range(self):
+        asg = {"AutoScalingGroupName": "x"}
+        default = mock.sentinel.default
         for value in ("-42", "-1.2", "1.2", "9"):
             self.get_asg_tag.return_value = value
-            p = chaos.get_asg_probability({"AutoScalingGroupName": "x"})
-            self.assertEqual(p, self.DEFAULT_PROBABILITY)
+            p = chaos.get_asg_probability(asg, default)
+            self.assertEqual(p, default)
 
     def test_logs_parseable_error_if_tag_value_is_invalid(self):
+        asg = {"AutoScalingGroupName": "ASGNameHere"}
         for value in ("blah", "-42", "0.1 0.2"):
             self.log.reset_mock()
             self.get_asg_tag.return_value = value
-            chaos.get_asg_probability({"AutoScalingGroupName": "ASGNameHere"})
+            chaos.get_asg_probability(asg, None)
             lines = self.get_log_lines("bad-probability")
             self.assertEqual(set((p[1], p[3]) for p in lines), set([
                 ("[" + value + "]", "ASGNameHere")
@@ -110,25 +114,27 @@ class TestGetASGInstanceId(PatchingTestCase):
     def test_returns_None_if_there_are_no_instances(self):
         self.random.return_value = 1.0
         asg = {"Instances": []}
-        self.assertEqual(chaos.get_asg_instance_id(asg), None)
+        self.assertEqual(chaos.get_asg_instance_id(asg, 0), None)
         asg = {}
-        self.assertEqual(chaos.get_asg_instance_id(asg), None)
+        self.assertEqual(chaos.get_asg_instance_id(asg, 0), None)
 
     def test_returns_None_if_probability_test_fails(self):
         self.choice.side_effect = lambda l: l[0]
         self.get_asg_probability.return_value = 0.5
         self.random.return_value = 1.0
         asg = {"Instances": [{"InstanceId": "i-1234abcd"}]}
-        self.assertEqual(chaos.get_asg_instance_id(asg), None)
-        self.get_asg_probability.assert_called_once_with(asg)
+        default = mock.sentinel.default
+        self.assertEqual(chaos.get_asg_instance_id(asg, default), None)
+        self.get_asg_probability.assert_called_once_with(asg, default)
 
     def test_returns_instance_id_if_probability_test_succeeds(self):
         self.choice.side_effect = lambda l: l[0]
         self.get_asg_probability.return_value = 0.5
         self.random.return_value = 0.0
         asg = {"Instances": [{"InstanceId": "i-1234abcd"}]}
-        self.assertEqual(chaos.get_asg_instance_id(asg), "i-1234abcd")
-        self.get_asg_probability.assert_called_once_with(asg)
+        default = mock.sentinel.default
+        self.assertEqual(chaos.get_asg_instance_id(asg, default), "i-1234abcd")
+        self.get_asg_probability.assert_called_once_with(asg, default)
 
     def test_returns_random_choice_of_instance_ids(self):
         self.get_asg_probability.return_value = 0.5
@@ -138,7 +144,7 @@ class TestGetASGInstanceId(PatchingTestCase):
             {"InstanceId": "i-11111111"},
             {"InstanceId": "i-22222222"}
         ]
-        i = chaos.get_asg_instance_id({"Instances": instances})
+        i = chaos.get_asg_instance_id({"Instances": instances}, 0)
         self.choice.assert_called_once_with(instances)
         self.assertEqual(i, self.choice.return_value.get.return_value)
 
@@ -198,23 +204,33 @@ class TestGetTargets(PatchingTestCase):
     def test_requests_all_auto_scaling_groups(self):
         autoscaling = mock.Mock()
         self.get_all_asgs.return_value = iter([])
-        chaos.get_targets(autoscaling)
+        chaos.get_targets(autoscaling, 0)
         self.get_all_asgs.assert_called_once_with(autoscaling)
 
     def test_returns_empty_list_if_no_auto_scaling_groups(self):
         autoscaling = mock.Mock()
         self.get_all_asgs.return_value = iter([])
-        self.assertEqual(chaos.get_targets(autoscaling), [])
+        self.assertEqual(chaos.get_targets(autoscaling, 0), [])
+
+    def test_passes_default_probability_to_get_asg_instance_id(self):
+        autoscaling = mock.Mock()
+        asg = {"AutoScalingGroupName": "a", "Instances": ["i-11111111"]}
+        default = mock.sentinel.default_probablity
+        self.get_asg_instance_id.return_value = None
+        self.get_all_asgs.return_value = iter([asg])
+        chaos.get_targets(autoscaling, default)
+        self.get_asg_instance_id.assert_called_once_with(asg, default)
 
     def test_gets_instance_from_each_asg(self):
         autoscaling = mock.Mock()
-        self.get_asg_instance_id.side_effect = lambda asg: asg["Instances"][0]
+        self.get_asg_instance_id.side_effect = lambda asg, default: \
+            asg["Instances"][0]
         self.get_all_asgs.return_value = iter([
             {"AutoScalingGroupName": "a", "Instances": ["i-11111111"]},
             {"AutoScalingGroupName": "b", "Instances": ["i-22222222"]},
             {"AutoScalingGroupName": "c", "Instances": ["i-33333333"]}
         ])
-        targets = chaos.get_targets(autoscaling)
+        targets = chaos.get_targets(autoscaling, 0)
         self.assertEqual(set(targets), set([
             ("a", "i-11111111"),
             ("b", "i-22222222"),
@@ -223,14 +239,14 @@ class TestGetTargets(PatchingTestCase):
 
     def test_ignores_asgs_with_no_instances(self):
         autoscaling = mock.Mock()
-        self.get_asg_instance_id.side_effect = lambda asg: \
+        self.get_asg_instance_id.side_effect = lambda asg, default: \
             asg["Instances"][0] if len(asg["Instances"]) != 0 else None
         self.get_all_asgs.return_value = iter([
             {"AutoScalingGroupName": "a", "Instances": []},
             {"AutoScalingGroupName": "b", "Instances": ["i-22222222"]},
             {"AutoScalingGroupName": "c", "Instances": []}
         ])
-        targets = chaos.get_targets(autoscaling)
+        targets = chaos.get_targets(autoscaling, 0)
         self.assertEqual(targets, [("b", "i-22222222")])
 
 
@@ -317,6 +333,7 @@ class TestChaosLambda(PatchingTestCase):
     patch_list = (
         "chaos.boto3",
         "chaos.get_targets",
+        "chaos.log",
         "chaos.terminate_targets",
     )
 
@@ -333,23 +350,34 @@ class TestChaosLambda(PatchingTestCase):
             c = self.clients[name] = mock.Mock(region_name=region_name)
         return c
 
+    def test_parseable_log_line_for_trigger(self):
+        self.get_targets.return_value = []
+        chaos.chaos_lambda("sp-moonbase-1", 0)
+        self.log.assert_called_once_with("triggered", "sp-moonbase-1")
+
     def test_does_nothing_if_no_targets(self):
         self.get_targets.return_value = []
-        chaos.chaos_lambda("sp-moonbase-1")
+        chaos.chaos_lambda("sp-moonbase-1", 0)
         self.assertEqual(self.terminate_targets.call_count, 0)
 
     def test_uses_autoscaling_service_in_correct_region(self):
         self.get_targets.return_value = []
-        chaos.chaos_lambda("sp-moonbase-1")
+        chaos.chaos_lambda("sp-moonbase-1", 0)
         autoscaling = self.get_targets.call_args[0][0]
         self.assertEqual(autoscaling, self.clients["autoscaling"])
         self.assertEqual(autoscaling.region_name, "sp-moonbase-1")
+
+    def test_passes_default_probability_to_get_targets(self):
+        default = mock.sentinel.default
+        self.get_targets.return_value = []
+        chaos.chaos_lambda("sp-moonbase-1", default)
+        self.assertEqual(self.get_targets.call_args[0][1], default)
 
     def test_terminates_target_instances_in_correct_region(self):
         targets = [("a", "i-11111111"), ("b", "i-22222222")]
         self.get_targets.return_value = targets
         ec2 = self.make_client("ec2", region_name="sp-moonbase-1")
-        chaos.chaos_lambda("sp-moonbase-1")
+        chaos.chaos_lambda("sp-moonbase-1", 0)
         # Above triggers self.make_client, which checks the region name
         self.terminate_targets.assert_called_once_with(ec2, targets)
 
@@ -357,8 +385,24 @@ class TestChaosLambda(PatchingTestCase):
 class TestHandler(PatchingTestCase):
 
     patch_list = (
+        "chaos.DEFAULT_PROBABILITY",
         "chaos.chaos_lambda",
-        "chaos.log",
+    )
+
+    def test_extracts_region_from_function_arn(self):
+        context = mock.Mock()
+        default = self.DEFAULT_PROBABILITY
+        for region in ("eu-west-1", "sp-moonbase-1"):
+            context.invoked_function_arn = "arn:aws:lambda:" + region + ":..."
+            self.chaos_lambda.reset_mock()
+            chaos.handler(None, context)
+            self.chaos_lambda.assert_called_once_with(region, default)
+
+
+class TestHandlerDefaultOff(PatchingTestCase):
+
+    patch_list = (
+        "chaos.chaos_lambda",
     )
 
     def test_extracts_region_from_function_arn(self):
@@ -366,11 +410,5 @@ class TestHandler(PatchingTestCase):
         for region in ("eu-west-1", "sp-moonbase-1"):
             context.invoked_function_arn = "arn:aws:lambda:" + region + ":..."
             self.chaos_lambda.reset_mock()
-            chaos.handler(None, context)
-            self.chaos_lambda.assert_called_once_with(region)
-
-    def test_parseable_log_line_for_trigger(self):
-        context = mock.Mock()
-        context.invoked_function_arn = "arn:aws:lambda:sp-moonbase-1:..."
-        chaos.handler(None, context)
-        self.log.assert_called_once_with("triggered", "sp-moonbase-1")
+            chaos.handler_default_off(None, context)
+            self.chaos_lambda.assert_called_once_with(region, 0.0)

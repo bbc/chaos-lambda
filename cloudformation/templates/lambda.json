@@ -1,4 +1,14 @@
 {
+    "Conditions": {
+        "DefaultOnCondition": {
+            "Fn::Equals": [
+                {
+                    "Ref": "DefaultMode"
+                },
+                "on"
+            ]
+        }
+    },
     "Description": "Chaos Lambda",
     "Outputs": {
         "ChaosLambdaFunctionOutput": {
@@ -15,6 +25,15 @@
         }
     },
     "Parameters": {
+        "DefaultMode": {
+            "AllowedValues": [
+                "on",
+                "off"
+            ],
+            "Default": "on",
+            "Description": "Default mode for untagged ASGs",
+            "Type": "String"
+        },
         "S3Bucket": {
             "Description": "Name of the S3 bucket containing the Lambda zip file",
             "Type": "String"
@@ -41,7 +60,13 @@
                     }
                 },
                 "Description": "CloudFormation Lambda",
-                "Handler": "chaos.handler",
+                "Handler": {
+                    "Fn::If": [
+                        "DefaultOnCondition",
+                        "chaos.handler",
+                        "chaos.handler_default_off"
+                    ]
+                },
                 "MemorySize": 128,
                 "Role": {
                     "Fn::GetAtt": [

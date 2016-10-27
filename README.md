@@ -22,6 +22,10 @@ path.  Adjust the `Schedule` parameter if the default run times don't suit you
 http://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html
 for documentation on the syntax.
 
+By default all Auto Scaling Groups in the region are targets.  Set the
+`DefaultMode` parameter to `off` to change this, so that only ASGs with a
+`chaos-lambda-termination` tag (see below) are affected.
+
 To receive notifications if the lambda function fails for any reason, create
 another stack using the `cloudformation/templates/alarms.json` template.  This
 takes the lambda function name (something similar to
