@@ -1,6 +1,6 @@
 .PHONY: all test clean zip
 
-all: test zip
+all: zip
 
 venv: test-requirements.txt
 	type virtualenv >/dev/null
