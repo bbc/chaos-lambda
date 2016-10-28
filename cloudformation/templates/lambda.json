@@ -1,5 +1,5 @@
 {
-    "Description": "CloudFormation template for the Chaos Lambda",
+    "Description": "Chaos Lambda",
     "Outputs": {
         "ChaosLambdaFunctionOutput": {
             "Description": "The Chaos Lambda Function",
@@ -16,16 +16,16 @@
     },
     "Parameters": {
         "S3Bucket": {
-            "Description": "S3Bucket Parameter",
+            "Description": "Name of the S3 bucket containing the Lambda zip file",
             "Type": "String"
         },
         "S3Key": {
-            "Description": "S3Key Parameter",
+            "Description": "Path to the Lambda zip file under the bucket",
             "Type": "String"
         },
         "Schedule": {
             "Default": "cron(0 10-16 ? * MON-FRI *)",
-            "Description": "Schedule on which to run the Chaos Lambda",
+            "Description": "Schedule on which to run",
             "Type": "String"
         }
     },

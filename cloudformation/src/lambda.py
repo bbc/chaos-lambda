@@ -4,23 +4,23 @@ from troposphere.iam import Role, Policy
 from troposphere.events import Rule, Target
 
 t = Template()
-t.add_description("CloudFormation template for the Chaos Lambda")
+t.add_description("Chaos Lambda")
 
 s3_bucket = t.add_parameter(Parameter(
     "S3Bucket",
-    Description="S3Bucket Parameter",
+    Description="Name of the S3 bucket containing the Lambda zip file",
     Type="String",
 ))
 
 s3_key = t.add_parameter(Parameter(
     "S3Key",
-    Description="S3Key Parameter",
+    Description="Path to the Lambda zip file under the bucket",
     Type="String",
 ))
 
 chaos_schedule = t.add_parameter(Parameter(
     "Schedule",
-    Description="Schedule on which to run the Chaos Lambda",
+    Description="Schedule on which to run",
     Default="cron(0 10-16 ? * MON-FRI *)",
     Type="String"
 ))
