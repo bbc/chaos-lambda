@@ -1,0 +1,141 @@
+{
+    "Conditions": {
+        "DefaultOnCondition": {
+            "Fn::Equals": [
+                {
+                    "Ref": "DefaultMode"
+                },
+                "on"
+            ]
+        }
+    },
+    "Description": "Chaos Lambda",
+    "Outputs": {
+        "ChaosLambdaFunctionOutput": {
+            "Description": "The Chaos Lambda Function",
+            "Value": {
+                "Ref": "ChaosLambdaFunction"
+            }
+        },
+        "ChaosLambdaRuleOutput": {
+            "Description": "Rule used to trigger the Chaos Lambda",
+            "Value": {
+                "Ref": "ChaosLambdaRule"
+            }
+        }
+    },
+    "Parameters": {
+        "DefaultMode": {
+            "AllowedValues": [
+                "on",
+                "off"
+            ],
+            "Default": "on",
+            "Description": "Default mode for untagged ASGs",
+            "Type": "String"
+        },
+        "Schedule": {
+            "Default": "cron(0 10-16 ? * MON-FRI *)",
+            "Description": "Schedule on which to run",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "ChaosLambdaFunction": {
+            "Properties": {
+                "Code": {
+                    "ZipFile": "from __future__ import print_function\n\nimport random\nimport time\n\nimport boto3\n\n\nPROBABILITY_TAG = \"chaos-lambda-termination\"\nDEFAULT_PROBABILITY = 1.0 / 6.0\n\n\ndef log(*args):\n\ttimestamp = time.strftime(\"%Y-%m-%dT%H:%M:%SZ\", time.gmtime())\n\tprint(timestamp, *args)\n\n\ndef get_asg_tag(asg, name, default=None):\n\tname = name.lower()\n\tfor tag in asg.get(\"Tags\", []):\n\t\tif tag.get(\"Key\", \"\").lower() == name:\n\t\t\treturn tag.get(\"Value\", \"\")\n\treturn default\n\n\ndef safe_float(s, default):\n\ttry:\n\t\treturn float(s)\n\texcept ValueError:\n\t\treturn default\n\n\ndef get_asg_probability(asg, default):\n\tvalue = get_asg_tag(asg, PROBABILITY_TAG, None)\n\tif value is None:\n\t\treturn default\n\n\tprobability = safe_float(value, None)\n\tif probability is not None and 0.0 <= probability <= 1.0:\n\t\treturn probability\n\n\tasg_name = asg[\"AutoScalingGroupName\"]\n\tlog(\"bad-probability\", \"[\" + value + \"]\", \"in\", asg_name)\n\treturn default\n\n\ndef get_asg_instance_id(asg, default):\n\tinstances = asg.get(\"Instances\", [])\n\tif len(instances) == 0:\n\t\treturn None\n\n\tprobability = get_asg_probability(asg, default)\n\tif random.random() >= probability:\n\t\treturn None\n\telse:\n\t\treturn random.choice(instances).get(\"InstanceId\", None)\n\n\ndef get_all_asgs(autoscaling):\n\tpaginator = autoscaling.get_paginator(\"describe_auto_scaling_groups\")\n\tfor response in paginator.paginate():\n\t\tfor asg in response.get(\"AutoScalingGroups\", []):\n\t\t\tyield asg\n\n\ndef get_targets(autoscaling, default_probability):\n\ttargets = []\n\tfor asg in get_all_asgs(autoscaling):\n\t\tinstance_id = get_asg_instance_id(asg, default_probability)\n\t\tif instance_id is not None:\n\t\t\ttargets.append((asg[\"AutoScalingGroupName\"], instance_id))\n\treturn targets\n\n\ndef terminate_targets(ec2, targets):\n\tfor asg_name, instance_id in targets:\n\t\tlog(\"targeting\", instance_id, \"in\", asg_name)\n\n\tinstance_ids = [instance_id for (asg_name, instance_id) in targets]\n\tresponse = ec2.terminate_instances(InstanceIds=instance_ids)\n\n\tresults = []\n\tfor i in response.get(\"TerminatingInstances\", []):\n\t\tresults.append((i[\"InstanceId\"], i[\"CurrentState\"][\"Name\"]))\n\n\tfor instance_id, state in results:\n\t\tlog(\"result\", instance_id, \"is\", state)\n\n\treturn results\n\n\ndef chaos_lambda(region, default_probability):\n\tlog(\"triggered\", region)\n\tautoscaling = boto3.client(\"autoscaling\", region_name=region)\n\ttargets = get_targets(autoscaling, default_probability)\n\tif len(targets) != 0:\n\t\tec2 = boto3.client(\"ec2\", region_name=region)\n\t\tterminate_targets(ec2, targets)\n\n\ndef handler(event, context):\n\tregion = context.invoked_function_arn.split(\":\")[3]\n\tchaos_lambda(region, DEFAULT_PROBABILITY)\n\n\ndef handler_default_off(event, context):\n\tregion = context.invoked_function_arn.split(\":\")[3]\n\tchaos_lambda(region, 0.0)\n"
+                },
+                "Description": "CloudFormation Lambda",
+                "Handler": {
+                    "Fn::If": [
+                        "DefaultOnCondition",
+                        "index.handler",
+                        "index.handler_default_off"
+                    ]
+                },
+                "MemorySize": 128,
+                "Role": {
+                    "Fn::GetAtt": [
+                        "ChaosLambdaRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "python2.7",
+                "Timeout": 30
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "ChaosLambdaRole": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "Path": "/lambda/",
+                "Policies": [
+                    {
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "logs:CreateLogGroup",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": "arn:aws:logs:*:*:*"
+                                },
+                                {
+                                    "Action": [
+                                        "ses:SendEmail",
+                                        "ec2:TerminateInstances",
+                                        "autoscaling:DescribeAutoScalingGroups"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": "*"
+                                }
+                            ],
+                            "Version": "2012-10-17"
+                        },
+                        "PolicyName": "ChaosLambdaPolicy"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "ChaosLambdaRule": {
+            "Properties": {
+                "Description": "Trigger Chaos Lambda according to a schedule",
+                "ScheduleExpression": {
+                    "Ref": "Schedule"
+                },
+                "State": "ENABLED",
+                "Targets": [
+                    {
+                        "Arn": {
+                            "Fn::GetAtt": [
+                                "ChaosLambdaFunction",
+                                "Arn"
+                            ]
+                        },
+                        "Id": "ChaosLambdaRuleTarget"
+                    }
+                ]
+            },
+            "Type": "AWS::Events::Rule"
+        }
+    }
+}

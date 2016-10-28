@@ -11,20 +11,16 @@ hours, helping teams to build services that handle them gracefully.
 
 # Setup
 
-Run `make zip` to create a `chaos-lambda.zip` file containing the lambda
-function.  Upload it to a S3 bucket in your account, taking note of the bucket
-name (eg `my-bucket`) and the path (eg `lambdas/chaos-lambda.zip`).
-
 Create the lambda function via CloudFormation using the
-`cloudformation/templates/lambda.json` template, entering the bucket name and
-path.  Adjust the `Schedule` parameter if the default run times don't suit you
-(once per hour between 10am and 4pm, Monday to Friday); see
-http://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html
-for documentation on the syntax.
-
-By default all Auto Scaling Groups in the region are targets.  Set the
-`DefaultMode` parameter to `off` to change this, so that only ASGs with a
-`chaos-lambda-termination` tag (see below) are affected.
+`cloudformation/templates/lambda_standalone.json` template.  There are two
+parameters you may want to change:
+* `Schedule`: change if the default run times don't suit you (once per hour
+  between 10am and 4pm, Monday to Friday); see
+  http://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html
+  for documentation on the syntax.
+* `DefaultMode`: by default all Auto Scaling Groups in the region are targets;
+  set this to `off` to switch to an opt-in mode, where only ASGs with a
+  `chaos-lambda-termination` tag (see below) are affected.
 
 To receive notifications if the lambda function fails for any reason, create
 another stack using the `cloudformation/templates/alarms.json` template.  This
