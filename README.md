@@ -17,8 +17,8 @@ name (eg `my-bucket`) and the path (eg `lambdas/chaos-lambda.zip`).
 
 Create the lambda function via CloudFormation using the
 `cloudformation/templates/lambda.json` template, entering the bucket name and
-path.  Adjust the `Schedule` parameter if the default run times (once per hour
-between 10am and 4pm, Monday to Friday) don't suit you; see
+path.  Adjust the `Schedule` parameter if the default run times don't suit you
+(once per hour between 10am and 4pm, Monday to Friday); see
 http://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html
 for documentation on the syntax.
 
