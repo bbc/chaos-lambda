@@ -10,9 +10,9 @@ from troposphere.events import Rule, Target
 if len(sys.argv) > 1:
     source = open(sys.argv[1], "r").read()
     # Reclaim a few bytes (maximum size is 4096!) by converting four space
-    # indents to tab characters
+    # indents to single space indents
     indent_re = re.compile(r"^((?:    ){1,})", re.MULTILINE)
-    source = indent_re.sub(lambda m: "\t" * (len(m.group(1)) / 4), source)
+    source = indent_re.sub(lambda m: " " * (len(m.group(1)) / 4), source)
 else:
     source = None
 
