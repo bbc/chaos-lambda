@@ -17,5 +17,5 @@ templates/%.json: src/%.py venv
 venv: requirements.txt
 	type virtualenv >/dev/null
 	rm -rf $@
-	trap "touch -t 200902132331.30 $@" EXIT; virtualenv $@ && venv/bin/pip install -r $<
+	trap "touch -t 200902132331.30 $@" EXIT; virtualenv $@ && $@/bin/pip install -r $<
 	touch -r $< $@
