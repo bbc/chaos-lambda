@@ -7,8 +7,8 @@ from troposphere.iam import Role, Policy
 from troposphere.events import Rule, Target
 
 
-if len(sys.argv) > 1:
-    source = open(sys.argv[1], "r").read()
+if len(sys.argv) > 2:
+    source = open(sys.argv[2], "r").read()
     # Reclaim a few bytes (maximum size is 4096!) by converting four space
     # indents to single space indents
     indent_re = re.compile(r"^((?:    ){1,})", re.MULTILINE)
@@ -137,4 +137,8 @@ t.add_output(Output(
     Description="Rule used to trigger the Chaos Lambda"
 ))
 
-print(t.to_json())
+template = t.to_json()
+if len(sys.argv) > 1:
+    open(sys.argv[1], "w").write(template + "\n")
+else:
+    print(template)

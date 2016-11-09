@@ -1,3 +1,5 @@
+import sys
+
 from troposphere import Parameter, Ref, Template
 from troposphere.cloudwatch import Alarm, MetricDimension
 from troposphere.sns import Subscription, Topic
@@ -115,4 +117,8 @@ t.add_resource(
 )
 '''
 
-print(t.to_json())
+template = t.to_json()
+if len(sys.argv) > 1:
+    open(sys.argv[1], "w").write(template + "\n")
+else:
+    print(template)

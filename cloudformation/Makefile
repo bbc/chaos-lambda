@@ -9,10 +9,10 @@ clean:
 	rm -f $(TARGETS)
 
 templates/lambda_standalone.json: src/lambda.py $(CHAOS_PY) venv
-	venv/bin/python $< $(CHAOS_PY) > $@
+	venv/bin/python $< $@ $(CHAOS_PY)
 
 templates/%.json: src/%.py venv
-	venv/bin/python $< > $@
+	venv/bin/python $< $@
 
 venv: requirements.txt
 	type virtualenv >/dev/null

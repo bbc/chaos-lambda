@@ -1,4 +1,5 @@
-import json
+import sys
+
 from troposphere import Template, Ref, Parameter
 from troposphere.logs import MetricFilter, MetricTransformation
 
@@ -37,4 +38,8 @@ for name, metric in lambda_metrics.iteritems():
     metric["LogGroupName"] = Ref(log_group)
     t.add_resource(MetricFilter(name, **metric))
 
-print t.to_json()
+template = t.to_json()
+if len(sys.argv) > 1:
+    open(sys.argv[1], "w").write(template + "\n")
+else:
+    print(template)
