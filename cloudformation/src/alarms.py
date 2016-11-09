@@ -42,9 +42,9 @@ t.add_resource(
     Alarm(
         "ChaosLambdaErrorAlarm",
         AlarmName="chaosLambda/LambdaError",
-        AlarmDescription="Enters ALARM state because we have received a lamdba "
-                         "error. See 'Errors' section on the following link: "
-                         "http://docs.aws.amazon.com/lambda/latest/dg/"
+        AlarmDescription="Enters ALARM state because we have received a "
+                         "lamdba error. See 'Errors' section on the following "
+                         "link: http://docs.aws.amazon.com/lambda/latest/dg/"
                          "monitoring-functions-metrics.html for more "
                          "information.",
         Namespace="AWS/Lambda",
