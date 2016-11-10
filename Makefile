@@ -4,6 +4,7 @@ all: zip
 
 venv: test-requirements.txt
 	type virtualenv >/dev/null
+	rm -rf $@
 	(virtualenv $@ && $@/bin/pip install -r $<) || rm -rf $@
 
 test: venv
