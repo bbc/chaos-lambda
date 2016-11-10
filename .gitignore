@@ -1,5 +1,5 @@
 .*.sw?
 *.py?
-lambda-monkey.zip
+chaos-lambda.zip
 venv
 .DS_Store
