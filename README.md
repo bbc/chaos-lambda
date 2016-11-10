@@ -9,11 +9,11 @@ Chaos Lambda increases the rate at which these failures occur during business
 hours, helping teams to build services that handle them gracefully.
 
 
-# Setup
+# Quick setup
 
-Create the lambda function via CloudFormation using the
-`cloudformation/templates/lambda_standalone.json` template.  There are two
-parameters you may want to change:
+Create the lambda function in the region you want it to target using the
+`cloudformation/templates/lambda_standalone.json` CloudFormation template.
+There are two parameters you may want to change:
 * `Schedule`: change if the default run times don't suit you (once per hour
   between 10am and 4pm, Monday to Friday); see
   http://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html
@@ -21,6 +21,9 @@ parameters you may want to change:
 * `DefaultMode`: by default all Auto Scaling Groups in the region are targets;
   set this to `off` to switch to an opt-in mode, where only ASGs with a
   `chaos-lambda-termination` tag (see below) are affected.
+
+
+# Notifications
 
 To receive notifications if the lambda function fails for any reason, create
 another stack using the `cloudformation/templates/alarms.json` template.  This
