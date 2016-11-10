@@ -352,17 +352,17 @@ class TestChaosLambda(PatchingTestCase):
 
     def test_parseable_log_line_for_trigger(self):
         self.get_targets.return_value = []
-        chaos.chaos_lambda("sp-moonbase-1", 0)
+        chaos.chaos_lambda(["sp-moonbase-1"], 0)
         self.log.assert_called_once_with("triggered", "sp-moonbase-1")
 
     def test_does_nothing_if_no_targets(self):
         self.get_targets.return_value = []
-        chaos.chaos_lambda("sp-moonbase-1", 0)
+        chaos.chaos_lambda(["sp-moonbase-1"], 0)
         self.assertEqual(self.terminate_targets.call_count, 0)
 
     def test_uses_autoscaling_service_in_correct_region(self):
         self.get_targets.return_value = []
-        chaos.chaos_lambda("sp-moonbase-1", 0)
+        chaos.chaos_lambda(["sp-moonbase-1"], 0)
         autoscaling = self.get_targets.call_args[0][0]
         self.assertEqual(autoscaling, self.clients["autoscaling"])
         self.assertEqual(autoscaling.region_name, "sp-moonbase-1")
@@ -370,16 +370,74 @@ class TestChaosLambda(PatchingTestCase):
     def test_passes_default_probability_to_get_targets(self):
         default = mock.sentinel.default
         self.get_targets.return_value = []
-        chaos.chaos_lambda("sp-moonbase-1", default)
+        chaos.chaos_lambda(["sp-moonbase-1"], default)
         self.assertEqual(self.get_targets.call_args[0][1], default)
 
     def test_terminates_target_instances_in_correct_region(self):
         targets = [("a", "i-11111111"), ("b", "i-22222222")]
         self.get_targets.return_value = targets
         ec2 = self.make_client("ec2", region_name="sp-moonbase-1")
-        chaos.chaos_lambda("sp-moonbase-1", 0)
+        chaos.chaos_lambda(["sp-moonbase-1"], 0)
         # Above triggers self.make_client, which checks the region name
         self.terminate_targets.assert_called_once_with(ec2, targets)
+
+
+class TestGetRegions(PatchingTestCase):
+
+    patch_list = (
+        "chaos.os",
+    )
+
+    def setUp(self):
+        super(TestGetRegions, self).setUp()
+        chaos.open = self.open = mock.Mock()
+
+    def tearDown(self):
+        super(TestGetRegions, self).tearDown()
+        del chaos.open
+
+    def test_looks_for_a_region_txt_file(self):
+        self.os.path.exists.return_value = False
+        context = mock.Mock()
+        context.invoked_function_arn = "arn:aws:lambda:re-gion-1:..."
+        chaos.get_regions(context)
+        self.os.path.exists.assert_called_once_with("regions.txt")
+
+    def test_extracts_region_from_context_if_no_regions_txt_file(self):
+        self.os.path.exists.return_value = False
+        context = mock.Mock()
+        for region in ("eu-west-1", "sp-moonbase-1"):
+            context.invoked_function_arn = "arn:aws:lambda:" + region + ":..."
+            result = chaos.get_regions(context)
+            self.assertEqual(result, [region])
+
+    def test_reads_from_regions_txt_if_it_exists(self):
+        self.os.path.exists.return_value = True
+        f = self.open.return_value
+        f.readlines.return_value = ["re-gion-1\n", "sp-moonbase-1\n"]
+        result = chaos.get_regions(mock.Mock())
+        self.assertEqual(result, ["re-gion-1", "sp-moonbase-1"])
+        f.close.assert_called_once_with()
+
+    def test_ignores_blank_lines_and_surrounding_whitespace(self):
+        self.os.path.exists.return_value = True
+        self.open.return_value.readlines.return_value = [
+            "\n",
+            "  sp-moonbase-1\n",
+            "  \n",
+            "re-gion-1  \n",
+            "\n",
+        ]
+        result = chaos.get_regions(mock.Mock())
+        self.assertEqual(result, ["sp-moonbase-1", "re-gion-1"])
+
+    def test_extracts_region_from_context_if_no_regions_found_in_file(self):
+        self.os.path.exists.return_value = True
+        self.open.return_value.readlines.return_value = []
+        context = mock.Mock()
+        context.invoked_function_arn = "arn:aws:lambda:eu-west-1:..."
+        result = chaos.get_regions(context)
+        self.assertEqual(result, ["eu-west-1"])
 
 
 class TestHandler(PatchingTestCase):
@@ -387,28 +445,42 @@ class TestHandler(PatchingTestCase):
     patch_list = (
         "chaos.DEFAULT_PROBABILITY",
         "chaos.chaos_lambda",
+        "chaos.get_regions",
     )
 
-    def test_extracts_region_from_function_arn(self):
-        context = mock.Mock()
-        default = self.DEFAULT_PROBABILITY
-        for region in ("eu-west-1", "sp-moonbase-1"):
-            context.invoked_function_arn = "arn:aws:lambda:" + region + ":..."
-            self.chaos_lambda.reset_mock()
-            chaos.handler(None, context)
-            self.chaos_lambda.assert_called_once_with(region, default)
+    def test_passes_along_the_region_list(self):
+        context = mock.sentinel.context
+        chaos.handler(None, context)
+        self.get_regions.assert_called_once_with(context)
+        self.chaos_lambda.assert_called_once_with(
+            self.get_regions.return_value,
+            mock.ANY
+        )
+
+    def test_passes_along_the_default_probability(self):
+        chaos.handler(None, mock.Mock())
+        self.chaos_lambda.assert_called_once_with(
+            mock.ANY,
+            self.DEFAULT_PROBABILITY
+        )
 
 
 class TestHandlerDefaultOff(PatchingTestCase):
 
     patch_list = (
         "chaos.chaos_lambda",
+        "chaos.get_regions",
     )
 
-    def test_extracts_region_from_function_arn(self):
-        context = mock.Mock()
-        for region in ("eu-west-1", "sp-moonbase-1"):
-            context.invoked_function_arn = "arn:aws:lambda:" + region + ":..."
-            self.chaos_lambda.reset_mock()
-            chaos.handler_default_off(None, context)
-            self.chaos_lambda.assert_called_once_with(region, 0.0)
+    def test_passes_along_the_region_list(self):
+        context = mock.sentinel.context
+        chaos.handler_default_off(None, context)
+        self.get_regions.assert_called_once_with(context)
+        self.chaos_lambda.assert_called_once_with(
+            self.get_regions.return_value,
+            mock.ANY
+        )
+
+    def test_passes_along_a_zero_probability(self):
+        chaos.handler_default_off(None, mock.Mock())
+        self.chaos_lambda.assert_called_once_with(mock.ANY, 0.0)

@@ -14,7 +14,10 @@ clean:
 	rm -f chaos-lambda.zip
 	rm -rf venv
 
+src/regions.txt:
+	touch $@
+
 zip: chaos-lambda.zip
 
-chaos-lambda.zip: src/chaos.py
+chaos-lambda.zip: src/chaos.py src/regions.txt
 	zip -j $@ $^

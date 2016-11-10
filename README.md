@@ -49,6 +49,33 @@ this rule in the AWS console under the Rules section of the CloudWatch service,
 and you can disable or enable it via the `Actions` button.
 
 
+# Regions
+
+By default the lambda will target instances running in the same region.  It's
+generally a good idea to avoid cross-region actions, but at the time of writing
+lambda functions cannot be run in some regions.
+
+To override the default choice of region you will need to create a
+`src/regions.txt` file containing one or more newline-separated AWS region
+names, eg:
+
+```
+ap-south-1
+us-west-1
+```
+
+Blank lines and any whitespace surrounding the names are ignored.
+
+Generate a `chaos-lambda.zip` file containing both the region list and the code
+by running `make zip`, and upload this to a S3 bucket that was created in the
+same region you plan to run the lambda from.
+
+Create a stack using the `cloudformation/templates/lambda.json` CloudFormation
+template (not the "standalone" one mentioned in the quick setup).  This
+requires two additional parameters for locating the zip file: `S3Bucket` and
+`S3Key`.
+
+
 # Log messages
 
 Chaos Lambda log lines always start with a timestamp and a word specifying the

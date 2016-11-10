@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import os
 import random
 import time
 
@@ -89,20 +90,32 @@ def terminate_targets(ec2, targets):
     return results
 
 
-def chaos_lambda(region, default_probability):
-    log("triggered", region)
-    autoscaling = boto3.client("autoscaling", region_name=region)
-    targets = get_targets(autoscaling, default_probability)
-    if len(targets) != 0:
-        ec2 = boto3.client("ec2", region_name=region)
-        terminate_targets(ec2, targets)
+def chaos_lambda(regions, default_probability):
+    for region in regions:
+        log("triggered", region)
+        autoscaling = boto3.client("autoscaling", region_name=region)
+        targets = get_targets(autoscaling, default_probability)
+        if len(targets) != 0:
+            ec2 = boto3.client("ec2", region_name=region)
+            terminate_targets(ec2, targets)
+
+
+def get_regions(context):
+    regions = []
+    if os.path.exists("regions.txt"):
+        f = open("regions.txt", "r")
+        regions = filter(None, [s.strip() for s in f.readlines()])
+        f.close()
+    if len(regions) == 0:
+        regions = [context.invoked_function_arn.split(":")[3]]
+    return regions
 
 
 def handler(event, context):
-    region = context.invoked_function_arn.split(":")[3]
-    chaos_lambda(region, DEFAULT_PROBABILITY)
+    regions = get_regions(context)
+    chaos_lambda(regions, DEFAULT_PROBABILITY)
 
 
 def handler_default_off(event, context):
-    region = context.invoked_function_arn.split(":")[3]
-    chaos_lambda(region, 0.0)
+    regions = get_regions(context)
+    chaos_lambda(regions, 0.0)

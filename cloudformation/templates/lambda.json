@@ -39,6 +39,7 @@
             "Type": "String"
         },
         "S3Key": {
+            "Default": "chaos-lambda.zip",
             "Description": "Path to the Lambda zip file under the bucket",
             "Type": "String"
         },

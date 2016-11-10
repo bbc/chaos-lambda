@@ -29,6 +29,7 @@ if source is None:
     s3_key = t.add_parameter(Parameter(
         "S3Key",
         Description="Path to the Lambda zip file under the bucket",
+        Default="chaos-lambda.zip",
         Type="String",
     ))
     lambda_code = Code(S3Bucket=Ref(s3_bucket), S3Key=Ref(s3_key))
