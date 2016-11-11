@@ -2,7 +2,7 @@ import re
 import sys
 
 from troposphere import Equals, GetAtt, If, Output, Parameter, Ref, Template
-from troposphere.awslambda import Function, Code
+from troposphere.awslambda import Code, Function, Permission
 from troposphere.iam import Role, Policy
 from troposphere.events import Rule, Target
 
@@ -124,6 +124,13 @@ chaos_lambda_rule = t.add_resource(Rule(
     Targets=[
         Target(Arn=GetAtt(lambda_function, "Arn"), Id="ChaosLambdaRuleTarget")
     ]
+))
+t.add_resource(Permission(
+    "ChaosLambdaRulePermission",
+    FunctionName=GetAtt(lambda_function, "Arn"),
+    SourceArn=GetAtt(chaos_lambda_rule, "Arn"),
+    Principal="events.amazonaws.com",
+    Action="lambda:InvokeFunction"
 ))
 
 t.add_output(Output(

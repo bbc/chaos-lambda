@@ -136,6 +136,25 @@
                 ]
             },
             "Type": "AWS::Events::Rule"
+        },
+        "ChaosLambdaRulePermission": {
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "ChaosLambdaFunction",
+                        "Arn"
+                    ]
+                },
+                "Principal": "events.amazonaws.com",
+                "SourceArn": {
+                    "Fn::GetAtt": [
+                        "ChaosLambdaRule",
+                        "Arn"
+                    ]
+                }
+            },
+            "Type": "AWS::Lambda::Permission"
         }
     }
 }
