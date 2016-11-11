@@ -40,7 +40,7 @@ else:
 
 chaos_schedule = t.add_parameter(Parameter(
     "Schedule",
-    Description="Schedule on which to run",
+    Description="Schedule on which to run (UTC time zone)",
     Default="cron(0 10-16 ? * MON-FRI *)",
     Type="String"
 ))

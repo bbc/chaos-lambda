@@ -36,7 +36,7 @@
         },
         "Schedule": {
             "Default": "cron(0 10-16 ? * MON-FRI *)",
-            "Description": "Schedule on which to run",
+            "Description": "Schedule on which to run (UTC time zone)",
             "Type": "String"
         }
     },

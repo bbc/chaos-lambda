@@ -15,7 +15,7 @@ Create the lambda function in the region you want it to target using the
 `cloudformation/templates/lambda_standalone.json` CloudFormation template.
 There are two parameters you may want to change:
 * `Schedule`: change if the default run times don't suit you (once per hour
-  between 10am and 4pm, Monday to Friday); see
+  between 10am UTC and 4pm UTC, Monday to Friday); see
   http://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html
   for documentation on the syntax.
 * `DefaultMode`: by default all Auto Scaling Groups in the region are targets;
