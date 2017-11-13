@@ -1,8 +1,8 @@
 import re
 import sys
 
-from troposphere import Equals, GetAtt, If, Output, Parameter, Ref, Template
-from troposphere.awslambda import Code, Function, Permission
+from troposphere import GetAtt, Output, Parameter, Ref, Template
+from troposphere.awslambda import Code, Environment, Function, Permission
 from troposphere.iam import Role, Policy
 from troposphere.events import Rule, Target
 
@@ -45,16 +45,20 @@ chaos_schedule = t.add_parameter(Parameter(
     Type="String"
 ))
 
-default_mode = t.add_parameter(Parameter(
-    "DefaultMode",
-    Description="Default mode for untagged ASGs",
-    AllowedValues=["on", "off"],
-    Default="on",
-    Type="String"
+default_probability = t.add_parameter(Parameter(
+    "DefaultProbability",
+    Description="Default termination probability",
+    Default=1.0 / 6.0,
+    MinValue=0.0,
+    MaxValue=1.0,
+    Type="Number"
 ))
 
-default_on_condition = "DefaultOnCondition"
-t.add_condition(default_on_condition, Equals(Ref(default_mode), "on"))
+regions = t.add_parameter(Parameter(
+    "Regions",
+    Description="Override default region with comma-separated list of regions",
+    Type="String"
+))
 
 lambda_policy = Policy(
     PolicyName="ChaosLambdaPolicy",
@@ -104,11 +108,11 @@ lambda_function = t.add_resource(Function(
     "ChaosLambdaFunction",
     Description="CloudFormation Lambda",
     Code=lambda_code,
-    Handler=If(
-        default_on_condition,
-        module_name + ".handler",
-        module_name + ".handler_default_off"
-    ),
+    Environment=Environment(Variables={
+        "probability": Ref(default_probability),
+        "regions": Ref(regions),
+    }),
+    Handler=module_name + ".handler",
     MemorySize=128,
     Role=GetAtt(lambda_role, "Arn"),
     Runtime="python2.7",

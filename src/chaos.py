@@ -101,21 +101,22 @@ def chaos_lambda(regions, default_probability):
 
 
 def get_regions(context):
-    regions = []
-    if os.path.exists("regions.txt"):
-        f = open("regions.txt", "r")
-        regions = filter(None, [s.strip() for s in f.readlines()])
-        f.close()
-    if len(regions) == 0:
-        regions = [context.invoked_function_arn.split(":")[3]]
-    return regions
+    v = os.environ.get("regions", "").strip()
+    if len(v) == 0:
+        return [context.invoked_function_arn.split(":")[3]]
+    else:
+        return filter(None, [s.strip() for s in v.split(",")])
+
+
+def get_default_probability():
+    v = os.environ.get("probability", "").strip()
+    if len(v) == 0:
+        return DEFAULT_PROBABILITY
+    else:
+        return float(v)
 
 
 def handler(event, context):
     regions = get_regions(context)
-    chaos_lambda(regions, DEFAULT_PROBABILITY)
-
-
-def handler_default_off(event, context):
-    regions = get_regions(context)
-    chaos_lambda(regions, 0.0)
+    probability = get_default_probability()
+    chaos_lambda(regions, probability)

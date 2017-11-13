@@ -3,7 +3,7 @@
 EC2 instances are volatile and can be recycled at any time without warning.
 Amazon recommends running them under Auto Scaling Groups to ensure overall
 service availability, but it's easy to forget that instances can suddenly fail
-until it happens in the early hours of the morning during a holiday.
+until it happens in the early hours of the morning when everyone is on holiday.
 
 Chaos Lambda increases the rate at which these failures occur during business
 hours, helping teams to build services that handle them gracefully.
@@ -18,9 +18,9 @@ There are two parameters you may want to change:
   between 10am UTC and 4pm UTC, Monday to Friday); see
   http://docs.aws.amazon.com/AmazonCloudWatch/latest/events/ScheduledEvents.html
   for documentation on the syntax.
-* `DefaultMode`: by default all Auto Scaling Groups in the region are targets;
-  set this to `off` to switch to an opt-in mode, where only ASGs with a
-  `chaos-lambda-termination` tag (see below) are affected.
+* `DefaultProbability`: by default all Auto Scaling Groups in the region are
+  targets; set this to `0.0` and only ASGs with a `chaos-lambda-termination`
+  tag (see below) will be affected.
 
 
 # Notifications
@@ -34,11 +34,20 @@ send the alerts to.
 
 # Probability of termination
 
-Whenever the lambda is triggered it will potentially terminate one instance per
-Auto Scaling Group in the region.  By default the probability of terminating an
-ASG's instance is 1 in 6.  This probability can be overridden by setting a
-`chaos-lambda-termination` tag on the ASG with a value between 0.0 and 1.0,
-where 0.0 means never terminate and 1.0 means always terminate.
+Every time the lambda triggers it examines all the Auto Scaling Groups in the
+region and potentially terminates one instance in each.  The probability of
+termination can be changed at the ASG level with a tag, and at a global level
+with the `DefaultProbability` stack parameter.
+
+At the ASG level the probability can be controlled by adding a
+`chaos-lambda-termination` tag with a value between `0.0` (never terminate) and
+`1.0` (always terminate).  Typically this would be used to opt out a legacy
+system (`0.0`).
+
+The `DefaultProbability` parameter sets the probability of termination for any
+ASG _without_ a valid `chaos-lambda-termination` tag.  If set to `0.0` the
+system becomes "opt-in", where any ASG without this tag is ignored.  The
+default is `0.166` (or 1 in 6).
 
 
 # Enabling/disabling
@@ -51,29 +60,16 @@ and you can disable or enable it via the `Actions` button.
 
 # Regions
 
-By default the lambda will target instances running in the same region.  It's
-generally a good idea to avoid cross-region actions, but at the time of writing
-lambda functions cannot be run in some regions.
+By default the lambda will target ASGs running in the same region.  It's
+generally a good idea to avoid cross-region actions, but if necessary an
+alternative list of one or more region names can be specified in the `Regions`
+stack parameter.
 
-To override the default choice of region you will need to create a
-`src/regions.txt` file containing one or more newline-separated AWS region
-names, eg:
-
-```
-ap-south-1
-us-west-1
-```
-
-Blank lines and any whitespace surrounding the names are ignored.
-
-Generate a `chaos-lambda.zip` file containing both the region list and the code
-by running `make zip`, and upload this to a S3 bucket that was created in the
-same region you plan to run the lambda from.
-
-Create a stack using the `cloudformation/templates/lambda.json` CloudFormation
-template (not the "standalone" one mentioned in the quick setup).  This
-requires two additional parameters for locating the zip file: `S3Bucket` and
-`S3Key`.
+The value is a comma separated list of region names with optional whitespace,
+so the following are all valid and equivalent:
+* `ap-south-1,eu-west-1,us-east-1`
+* `ap-south-1, eu-west-1, us-east-1`
+* `ap-south-1 , eu-west-1 , us-east-1`
 
 
 # Log messages

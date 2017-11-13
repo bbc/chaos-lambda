@@ -1,6 +1,5 @@
 .*.sw?
 *.py?
 chaos-lambda.zip
-src/regions.txt
 venv
 .DS_Store

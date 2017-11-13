@@ -1,14 +1,4 @@
 {
-    "Conditions": {
-        "DefaultOnCondition": {
-            "Fn::Equals": [
-                {
-                    "Ref": "DefaultMode"
-                },
-                "on"
-            ]
-        }
-    },
     "Description": "Chaos Lambda",
     "Outputs": {
         "ChaosLambdaFunctionOutput": {
@@ -25,13 +15,15 @@
         }
     },
     "Parameters": {
-        "DefaultMode": {
-            "AllowedValues": [
-                "on",
-                "off"
-            ],
-            "Default": "on",
-            "Description": "Default mode for untagged ASGs",
+        "DefaultProbability": {
+            "Default": 0.16666666666666666,
+            "Description": "Default termination probability",
+            "MaxValue": 1.0,
+            "MinValue": 0.0,
+            "Type": "Number"
+        },
+        "Regions": {
+            "Description": "Override default region with comma-separated list of regions",
             "Type": "String"
         },
         "S3Bucket": {
@@ -61,13 +53,17 @@
                     }
                 },
                 "Description": "CloudFormation Lambda",
-                "Handler": {
-                    "Fn::If": [
-                        "DefaultOnCondition",
-                        "chaos.handler",
-                        "chaos.handler_default_off"
-                    ]
+                "Environment": {
+                    "Variables": {
+                        "probability": {
+                            "Ref": "DefaultProbability"
+                        },
+                        "regions": {
+                            "Ref": "Regions"
+                        }
+                    }
                 },
+                "Handler": "chaos.handler",
                 "MemorySize": 128,
                 "Role": {
                     "Fn::GetAtt": [
