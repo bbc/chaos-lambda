@@ -100,22 +100,20 @@ lambda_role = Role(
 )
 t.add_resource(lambda_role)
 
-lambda_function = t.add_resource(
-    Function(
-        "ChaosLambdaFunction",
-        Description="CloudFormation Lambda",
-        Code=lambda_code,
-        Handler=If(
-            default_on_condition,
-            module_name + ".handler",
-            module_name + ".handler_default_off"
-        ),
-        MemorySize=128,
-        Role=GetAtt(lambda_role, "Arn"),
-        Runtime="python2.7",
-        Timeout=30,
-    )
-)
+lambda_function = t.add_resource(Function(
+    "ChaosLambdaFunction",
+    Description="CloudFormation Lambda",
+    Code=lambda_code,
+    Handler=If(
+        default_on_condition,
+        module_name + ".handler",
+        module_name + ".handler_default_off"
+    ),
+    MemorySize=128,
+    Role=GetAtt(lambda_role, "Arn"),
+    Runtime="python2.7",
+    Timeout=30,
+))
 
 chaos_lambda_rule = t.add_resource(Rule(
     "ChaosLambdaRule",
