@@ -1,3 +1,4 @@
+import json
 import re
 
 import mock
@@ -254,6 +255,7 @@ class TestTerminateTargets(PatchingTestCase):
 
     patch_list = (
         "chaos.log",
+        "chaos.os"
     )
 
     def get_log_lines(self, name):
@@ -266,8 +268,9 @@ class TestTerminateTargets(PatchingTestCase):
 
     def test_terminates_target_instances(self):
         ec2 = mock.Mock()
+        sns = mock.Mock()
         ec2.terminate_instances.return_value = {}
-        chaos.terminate_targets(ec2, [
+        chaos.terminate_targets(ec2, sns, [
             ("a", "i-11111111"),
             ("b", "i-22222222")
         ])
@@ -277,8 +280,9 @@ class TestTerminateTargets(PatchingTestCase):
 
     def test_parseable_log_line_for_each_targeted_instance(self):
         ec2 = mock.Mock()
+        sns = mock.Mock()
         ec2.terminate_instances.return_value = {}
-        chaos.terminate_targets(ec2, [
+        chaos.terminate_targets(ec2, sns, [
             ("asg-name-one", "i-00000000"),
             ("second-asg", "i-11111111"),
             ("the-third-asg", "i-22222222")
@@ -292,6 +296,7 @@ class TestTerminateTargets(PatchingTestCase):
 
     def test_parseable_log_line_for_each_termination_result(self):
         ec2 = mock.Mock()
+        sns = mock.Mock()
         # We're cheating here and returning results that are unrelated to the
         # list passed to terminate_targets
         ec2.terminate_instances.return_value = {
@@ -301,7 +306,7 @@ class TestTerminateTargets(PatchingTestCase):
                 {"InstanceId": "i-22222222", "CurrentState": {"Name": "s3"}}
             ]
         }
-        chaos.terminate_targets(ec2, [("a", "i-11111111")])
+        chaos.terminate_targets(ec2, sns, [("a", "i-11111111")])
         logged = self.get_log_lines("result")
         self.assertEqual(set((part[1], part[3]) for part in logged), set([
             ("i-00000000", "s1"),
@@ -311,6 +316,7 @@ class TestTerminateTargets(PatchingTestCase):
 
     def test_returns_termination_results(self):
         ec2 = mock.Mock()
+        sns = mock.Mock()
         # We're cheating here and returning results that are unrelated to the
         # list passed to terminate_targets
         ec2.terminate_instances.return_value = {
@@ -320,13 +326,65 @@ class TestTerminateTargets(PatchingTestCase):
                 {"InstanceId": "i-22222222", "CurrentState": {"Name": "s3"}}
             ]
         }
-        results = chaos.terminate_targets(ec2, [])
+        results = chaos.terminate_targets(ec2, sns, [])
         self.assertEqual(set(results), set([
             ("i-00000000", "s1"),
             ("i-11111111", "s2"),
             ("i-22222222", "s3")
         ]))
 
+    def test_sends_notification_per_instance(self):
+        self.os.environ.get.return_value = "MyTestTopic"
+        ec2 = mock.Mock()
+        sns = mock.Mock()
+        ec2.terminate_instances.return_value = {
+            "TerminatingInstances": []
+        }
+        results = chaos.terminate_targets(ec2, sns, [("a1","i1"), ("a2","i2")])
+        sns.publish.assert_any_call(
+            TopicArn="MyTestTopic",
+            Message=MatchJson({
+                "event_name": "chaos_lambda.terminating",
+                "asg_name": "a1",
+                "instance_id": "i1"
+            })
+        )
+        sns.publish.assert_any_call(
+            TopicArn="MyTestTopic",
+            Message=MatchJson({
+                "event_name": "chaos_lambda.terminating",
+                "asg_name": "a2",
+                "instance_id": "i2"
+            })
+        )
+        self.assertEquals(2, sns.publish.call_count)
+
+class MatchJson:
+    '''
+    A JSON Matcher that takes a Dictionary as input, checking that those
+    specified keys and values exist in the JSON string that is supplied. It
+    does not check if there are any other keys in the JSON string.
+    '''
+    def __init__(self, expected):
+        self.expected = expected
+
+    def __repr__(self):
+        return "'" + json.dumps(self.expected) + "'"
+
+    def __eq__(self, json_string):
+        try:
+            parsed_json = json.loads(json_string)
+            for key in self.expected.keys():
+                try:
+                    if self.expected[key] != parsed_json[key]:
+                        return False
+                except KeyError:
+                    print "The key '" + key + "' does not exist"
+                    return False
+        except ValueError:
+            print "Message passed to sns.publish was not valid JSON"
+            return False
+        return True
 
 class TestChaosLambda(PatchingTestCase):
 
@@ -377,9 +435,10 @@ class TestChaosLambda(PatchingTestCase):
         targets = [("a", "i-11111111"), ("b", "i-22222222")]
         self.get_targets.return_value = targets
         ec2 = self.make_client("ec2", region_name="sp-moonbase-1")
+        sns = self.make_client("sns", region_name="sp-moonbase-1")
         chaos.chaos_lambda(["sp-moonbase-1"], 0)
         # Above triggers self.make_client, which checks the region name
-        self.terminate_targets.assert_called_once_with(ec2, targets)
+        self.terminate_targets.assert_called_once_with(ec2, sns, targets)
 
 
 class TestGetRegions(PatchingTestCase):

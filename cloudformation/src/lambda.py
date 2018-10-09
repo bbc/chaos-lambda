@@ -5,6 +5,7 @@ from troposphere import GetAtt, Output, Parameter, Ref, Template
 from troposphere.awslambda import Code, Environment, Function, Permission
 from troposphere.iam import Role, Policy
 from troposphere.events import Rule, Target
+from troposphere.sns import Topic
 
 
 if len(sys.argv) > 2:
@@ -60,6 +61,10 @@ regions = t.add_parameter(Parameter(
     Type="String"
 ))
 
+termination_topic = t.add_resource(
+    Topic("ChaosLambdaTerminationTopic")
+)
+
 lambda_policy = Policy(
     PolicyName="ChaosLambdaPolicy",
     PolicyDocument={
@@ -82,6 +87,13 @@ lambda_policy = Policy(
                     "autoscaling:DescribeAutoScalingGroups"
                 ],
                 "Resource": "*"
+            },
+            {
+                "Effect": "Allow",
+                "Action": [
+                    "sns:Publish"
+                ],
+                "Resource": Ref(termination_topic)
             }
         ]
     }
@@ -111,6 +123,7 @@ lambda_function = t.add_resource(Function(
     Environment=Environment(Variables={
         "probability": Ref(default_probability),
         "regions": Ref(regions),
+        "termination_topic_arn": Ref(termination_topic),
     }),
     Handler=module_name + ".handler",
     MemorySize=128,

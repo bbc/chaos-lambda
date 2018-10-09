@@ -60,6 +60,9 @@
                         },
                         "regions": {
                             "Ref": "Regions"
+                        },
+                        "termination_topic_arn": {
+                            "Ref": "ChaosLambdaTerminationTopic"
                         }
                     }
                 },
@@ -116,6 +119,15 @@
                                     ],
                                     "Effect": "Allow",
                                     "Resource": "*"
+                                },
+                                {
+                                    "Action": [
+                                        "sns:Publish"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": {
+                                        "Ref": "ChaosLambdaTerminationTopic"
+                                    }
                                 }
                             ],
                             "Version": "2012-10-17"
@@ -165,6 +177,9 @@
                 }
             },
             "Type": "AWS::Lambda::Permission"
+        },
+        "ChaosLambdaTerminationTopic": {
+            "Type": "AWS::SNS::Topic"
         }
     }
 }

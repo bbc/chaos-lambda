@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import json
 import os
 import random
 import time
@@ -72,10 +73,23 @@ def get_targets(autoscaling, default_probability):
             targets.append((asg["AutoScalingGroupName"], instance_id))
     return targets
 
+def send_notification(sns, instance_id, asg_name):
+    topic = os.environ.get("termination_topic_arn", "").strip()
+    notification = {
+        "event_name": "chaos_lambda.terminating",
+        "instance_id": instance_id,
+        "asg_name": asg_name,
+    }
+    sns.publish(
+        TopicArn=topic,
+        Message=json.dumps(notification)
+    )
 
-def terminate_targets(ec2, targets):
+
+def terminate_targets(ec2, sns, targets):
     for asg_name, instance_id in targets:
         log("targeting", instance_id, "in", asg_name)
+        send_notification(sns, instance_id, asg_name)
 
     instance_ids = [instance_id for (asg_name, instance_id) in targets]
     response = ec2.terminate_instances(InstanceIds=instance_ids)
@@ -97,7 +111,8 @@ def chaos_lambda(regions, default_probability):
         targets = get_targets(autoscaling, default_probability)
         if len(targets) != 0:
             ec2 = boto3.client("ec2", region_name=region)
-            terminate_targets(ec2, targets)
+            sns = boto3.client("sns", region_name=region)
+            terminate_targets(ec2, sns, targets)
 
 
 def get_regions(context):
