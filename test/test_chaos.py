@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import json
 import re
 
@@ -379,10 +381,10 @@ class MatchJson:
                     if self.expected[key] != parsed_json[key]:
                         return False
                 except KeyError:
-                    print "The key '" + key + "' does not exist"
+                    print("The key '" + key + "' does not exist")
                     return False
         except ValueError:
-            print "Message passed to sns.publish was not valid JSON"
+            print("Message passed to sns.publish was not valid JSON")
             return False
         return True
 

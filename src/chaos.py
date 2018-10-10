@@ -73,8 +73,11 @@ def get_targets(autoscaling, default_probability):
             targets.append((asg["AutoScalingGroupName"], instance_id))
     return targets
 
+
 def send_notification(sns, instance_id, asg_name):
     topic = os.environ.get("termination_topic_arn", "").strip()
+    if topic == '':
+        return
     notification = {
         "event_name": "chaos_lambda.terminating",
         "instance_id": instance_id,
