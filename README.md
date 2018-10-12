@@ -25,6 +25,25 @@ There are two parameters you may want to change:
 
 # Notifications
 
+## Termination Topic
+
+By deploying the `lambda_standalone.json` CloudFormation template, an SNS topic
+will be created with the name `ChaosLambdaTerminationTopic`. For each instance
+that gets terminated, a notification will be published using this structure:
+
+```json
+{
+  "event_name": "chaos_lambda.terminating",
+  "asg_name": "my-autoscaling-group",
+  "instance_id": "i-00001234"
+}
+```
+
+By default, no subscriptions are created to this topic, so it is up to you to
+subscribe a queue or another lambda if you wish.
+
+## Failure topic
+
 To receive notifications if the lambda function fails for any reason, create
 another stack using the `cloudformation/templates/alarms.json` template.  This
 takes the lambda function name (something similar to
