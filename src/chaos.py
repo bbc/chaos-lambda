@@ -92,7 +92,10 @@ def send_notification(sns, instance_id, asg_name):
 def terminate_targets(ec2, sns, targets):
     for asg_name, instance_id in targets:
         log("targeting", instance_id, "in", asg_name)
-        send_notification(sns, instance_id, asg_name)
+        try:
+            send_notification(sns, instance_id, asg_name)
+        except Exception as e:
+            log("Failed to send notification", e)
 
     instance_ids = [instance_id for (asg_name, instance_id) in targets]
     response = ec2.terminate_instances(InstanceIds=instance_ids)

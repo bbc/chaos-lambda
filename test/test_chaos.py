@@ -361,6 +361,22 @@ class TestTerminateTargets(PatchingTestCase):
         )
         self.assertEquals(2, sns.publish.call_count)
 
+    def test_handles_sns_exception(self):
+        self.os.environ.get.return_value = "MyTestTopic"
+        ec2 = mock.Mock()
+        sns = mock.Mock()
+        ec2.terminate_instances.return_value = {}
+
+        sns.publish.side_effect = Exception("boom")
+        chaos.terminate_targets(ec2, sns, [
+            ("a", "i-11111111"),
+            ("b", "i-22222222")
+        ])
+        ec2.terminate_instances.assert_called_once_with(
+            InstanceIds=["i-11111111", "i-22222222"]
+        )
+
+
 class MatchJson:
     '''
     A JSON Matcher that takes a Dictionary as input, checking that those
