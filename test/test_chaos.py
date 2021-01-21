@@ -3,7 +3,7 @@ from __future__ import print_function
 import json
 import re
 
-import mock
+from unittest import mock
 
 from base import mock_imports, PatchingTestCase
 
@@ -342,7 +342,7 @@ class TestTerminateTargets(PatchingTestCase):
         ec2.terminate_instances.return_value = {
             "TerminatingInstances": []
         }
-        results = chaos.terminate_targets(ec2, sns, [("a1","i1"), ("a2","i2")])
+        chaos.terminate_targets(ec2, sns, [("a1", "i1"), ("a2", "i2")])
         sns.publish.assert_any_call(
             TopicArn="MyTestTopic",
             Message=MatchJson({
@@ -403,6 +403,7 @@ class MatchJson:
             print("Message passed to sns.publish was not valid JSON")
             return False
         return True
+
 
 class TestChaosLambda(PatchingTestCase):
 
