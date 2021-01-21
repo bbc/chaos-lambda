@@ -359,7 +359,7 @@ class TestTerminateTargets(PatchingTestCase):
                 "instance_id": "i2"
             })
         )
-        self.assertEquals(2, sns.publish.call_count)
+        self.assertEqual(2, sns.publish.call_count)
 
     def test_handles_sns_exception(self):
         self.os.environ.get.return_value = "MyTestTopic"
