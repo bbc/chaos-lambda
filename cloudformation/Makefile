@@ -15,6 +15,5 @@ templates/%.json: src/%.py venv
 	venv/bin/python $< $@
 
 venv: requirements.txt
-	type virtualenv >/dev/null
 	rm -rf $@
-	(virtualenv $@ && $@/bin/pip install -r $<) || rm -rf $@
+	(python3 -m venv $@ && $@/bin/pip install -r $<) || rm -rf $@

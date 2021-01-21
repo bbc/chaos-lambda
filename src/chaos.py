@@ -126,7 +126,7 @@ def get_regions(context):
     if len(v) == 0:
         return [context.invoked_function_arn.split(":")[3]]
     else:
-        return filter(None, [s.strip() for s in v.split(",")])
+        return list(filter(None, [s.strip() for s in v.split(",")]))
 
 
 def get_default_probability():

@@ -13,7 +13,7 @@ if len(sys.argv) > 2:
     # Reclaim a few bytes (maximum size is 4096!) by converting four space
     # indents to single space indents
     indent_re = re.compile(r"^((?:    ){1,})", re.MULTILINE)
-    source = indent_re.sub(lambda m: " " * (len(m.group(1)) / 4), source)
+    source = indent_re.sub(lambda m: " " * (len(m.group(1)) // 4), source)
 else:
     source = None
 
@@ -128,7 +128,7 @@ lambda_function = t.add_resource(Function(
     Handler=module_name + ".handler",
     MemorySize=128,
     Role=GetAtt(lambda_role, "Arn"),
-    Runtime="python2.7",
+    Runtime="python3.8",
     Timeout=30,
 ))
 

@@ -34,7 +34,7 @@ lambda_metrics = {
     }
 }
 
-for name, metric in lambda_metrics.iteritems():
+for name, metric in lambda_metrics.items():
     metric["LogGroupName"] = Ref(log_group)
     t.add_resource(MetricFilter(name, **metric))
 

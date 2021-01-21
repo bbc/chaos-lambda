@@ -2,17 +2,11 @@
 
 all: zip
 
-venv: test-requirements.txt
-	type virtualenv >/dev/null
-	rm -rf $@
-	(virtualenv $@ && $@/bin/pip install -r $<) || rm -rf $@
-
-test: venv
-	venv/bin/nosetests -v
+test:
+	PYTHONPATH=src/ python3 -m unittest discover -v test/
 
 clean:
 	rm -f chaos-lambda.zip
-	rm -rf venv
 
 zip: chaos-lambda.zip
 
