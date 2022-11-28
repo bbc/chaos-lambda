@@ -3,6 +3,7 @@ import sys
 
 from troposphere import GetAtt, Output, Parameter, Ref, Template
 from troposphere.awslambda import Code, Environment, Function, Permission
+from troposphere.logs import LogGroup
 from troposphere.iam import Role, Policy
 from troposphere.events import Rule, Target
 from troposphere.sns import Topic
@@ -19,7 +20,7 @@ else:
 
 
 t = Template()
-t.add_description("Chaos Lambda")
+t.set_description("Chaos Lambda")
 
 if source is None:
     s3_bucket = t.add_parameter(Parameter(
@@ -116,9 +117,16 @@ lambda_role = Role(
 )
 t.add_resource(lambda_role)
 
+t.add_resource(LogGroup(
+    "ChaosLambdaLogGroup",
+    LogGroupName="aws/lambda/chaos-lambda",
+    RetentionInDays=90,
+))
+
 lambda_function = t.add_resource(Function(
     "ChaosLambdaFunction",
     Description="CloudFormation Lambda",
+    FunctionName="chaos-lambda",
     Code=lambda_code,
     Environment=Environment(Variables={
         "probability": Ref(default_probability),

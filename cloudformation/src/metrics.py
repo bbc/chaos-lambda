@@ -15,7 +15,7 @@ log_group = t.add_parameter(
     )
 )
 
-t.add_description(
+t.set_description(
     "Metrics and filters for Chaos Lambda"
 )
 

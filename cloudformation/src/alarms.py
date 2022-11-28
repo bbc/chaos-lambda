@@ -9,7 +9,7 @@ METRIC_NAMESPACE = "BBC/CHAOS-LAMBDA"
 
 t = Template()
 
-t.add_description("Chaos Lambda alarms")
+t.set_description("Chaos Lambda alarms")
 
 alarm_email = t.add_parameter(
     Parameter(
