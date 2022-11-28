@@ -52,6 +52,7 @@
                         }
                     }
                 },
+                "FunctionName": "chaos-lambda",
                 "Handler": "index.handler",
                 "MemorySize": 128,
                 "Role": {
@@ -64,6 +65,13 @@
                 "Timeout": 30
             },
             "Type": "AWS::Lambda::Function"
+        },
+        "ChaosLambdaLogGroup": {
+            "Properties": {
+                "LogGroupName": "aws/lambda/chaos-lambda",
+                "RetentionInDays": 90
+            },
+            "Type": "AWS::Logs::LogGroup"
         },
         "ChaosLambdaRole": {
             "Properties": {
