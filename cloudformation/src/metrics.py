@@ -15,7 +15,7 @@ log_group = t.add_parameter(
     )
 )
 
-t.add_description(
+t.set_description(
     "Metrics and filters for Chaos Lambda"
 )
 
@@ -38,7 +38,7 @@ for name, metric in lambda_metrics.items():
     metric["LogGroupName"] = Ref(log_group)
     t.add_resource(MetricFilter(name, **metric))
 
-template = t.to_json()
+template = t.to_json(indent=4)
 if len(sys.argv) > 1:
     open(sys.argv[1], "w").write(template + "\n")
 else:

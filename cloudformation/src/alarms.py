@@ -9,7 +9,7 @@ METRIC_NAMESPACE = "BBC/CHAOS-LAMBDA"
 
 t = Template()
 
-t.add_description("Chaos Lambda alarms")
+t.set_description("Chaos Lambda alarms")
 
 alarm_email = t.add_parameter(
     Parameter(
@@ -117,7 +117,7 @@ t.add_resource(
 )
 '''
 
-template = t.to_json()
+template = t.to_json(indent=4)
 if len(sys.argv) > 1:
     open(sys.argv[1], "w").write(template + "\n")
 else:

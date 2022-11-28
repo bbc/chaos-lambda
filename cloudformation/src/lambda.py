@@ -19,7 +19,7 @@ else:
 
 
 t = Template()
-t.add_description("Chaos Lambda")
+t.set_description("Chaos Lambda")
 
 if source is None:
     s3_bucket = t.add_parameter(Parameter(
@@ -160,7 +160,7 @@ t.add_output(Output(
     Description="Rule used to trigger the Chaos Lambda"
 ))
 
-template = t.to_json()
+template = t.to_json(indent=4)
 if len(sys.argv) > 1:
     open(sys.argv[1], "w").write(template + "\n")
 else:
