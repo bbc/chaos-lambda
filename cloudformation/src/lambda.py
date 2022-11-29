@@ -72,7 +72,7 @@ log_retention_period = t.add_parameter(Parameter(
 function_name = t.add_parameter(Parameter(
     "LambdaFunctionName",
     Description="The lambda function name",
-    Default="chaos-lamnda",
+    Default="chaos-lambda",
     Type="String"
 ))
 
