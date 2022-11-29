@@ -1,7 +1,7 @@
 import re
 import sys
 
-from troposphere import GetAtt, Output, Parameter, Ref, Template
+from troposphere import GetAtt, Output, Parameter, Ref, Sub, Template
 from troposphere.awslambda import Code, Environment, Function, Permission
 from troposphere.logs import LogGroup
 from troposphere.iam import Role, Policy
@@ -124,16 +124,16 @@ lambda_role = Role(
 )
 t.add_resource(lambda_role)
 
-t.add_resource(LogGroup(
+lambda_log_group = t.add_resource(LogGroup(
     "ChaosLambdaLogGroup",
-    LogGroupName="aws/lambda/chaos-lambda",
+    LogGroupName=Sub("/aws/lambda/${AWS::StackName}-function"),
     RetentionInDays=Ref(log_retention_period),
 ))
 
 lambda_function = t.add_resource(Function(
     "ChaosLambdaFunction",
     Description="CloudFormation Lambda",
-    FunctionName="chaos-lambda",
+    FunctionName=Sub("${AWS::StackName}-function"),
     Code=lambda_code,
     Environment=Environment(Variables={
         "probability": Ref(default_probability),
@@ -145,6 +145,7 @@ lambda_function = t.add_resource(Function(
     Role=GetAtt(lambda_role, "Arn"),
     Runtime="python3.8",
     Timeout=30,
+    DependsOn=lambda_log_group.title
 ))
 
 chaos_lambda_rule = t.add_resource(Rule(

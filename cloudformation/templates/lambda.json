@@ -48,6 +48,7 @@
     },
     "Resources": {
         "ChaosLambdaFunction": {
+            "DependsOn": "ChaosLambdaLogGroup",
             "Properties": {
                 "Code": {
                     "S3Bucket": {
@@ -71,7 +72,9 @@
                         }
                     }
                 },
-                "FunctionName": "chaos-lambda",
+                "FunctionName": {
+                    "Fn::Sub": "${AWS::StackName}-function"
+                },
                 "Handler": "chaos.handler",
                 "MemorySize": 128,
                 "Role": {
@@ -87,7 +90,9 @@
         },
         "ChaosLambdaLogGroup": {
             "Properties": {
-                "LogGroupName": "aws/lambda/chaos-lambda",
+                "LogGroupName": {
+                    "Fn::Sub": "/aws/lambda/${AWS::StackName}-function"
+                },
                 "RetentionInDays": {
                     "Ref": "LogRetentionPeriod"
                 }
