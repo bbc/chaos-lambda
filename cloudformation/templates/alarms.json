@@ -1,84 +1,84 @@
 {
- "Description": "Chaos Lambda alarms",
- "Parameters": {
-  "ChaosLambdaAlarmEmail": {
-   "Description": "Email address to notify if there are any operational issues",
-   "Type": "String"
-  },
-  "LambdaFunctionName": {
-   "Description": "The name of the lambda function",
-   "Type": "String"
-  }
- },
- "Resources": {
-  "ChaosLambdaAlarmTopic": {
-   "Properties": {
-    "Subscription": [
-     {
-      "Endpoint": {
-       "Ref": "ChaosLambdaAlarmEmail"
-      },
-      "Protocol": "email"
-     }
-    ]
-   },
-   "Type": "AWS::SNS::Topic"
-  },
-  "ChaosLambdaDurationAlarm": {
-   "Properties": {
-    "AlarmActions": [
-     {
-      "Ref": "ChaosLambdaAlarmTopic"
-     }
-    ],
-    "AlarmDescription": "Enters ALARM state because we have functions taking longer than expected. Please adjust the available lambda process time accordingly, then replay any  failed events. See 'Duration' section on the  following link: http://docs.aws.amazon.com/lambda/latest/dg/monitoring-functions-metrics.html for more information.",
-    "AlarmName": "chaosLambda/LambdaDuration",
-    "ComparisonOperator": "GreaterThanThreshold",
-    "Dimensions": [
-     {
-      "Name": "FunctionName",
-      "Value": {
-       "Ref": "LambdaFunctionName"
-      }
-     }
-    ],
-    "EvaluationPeriods": "1",
-    "MetricName": "Duration",
-    "Namespace": "AWS/Lambda",
-    "Period": "60",
-    "Statistic": "Maximum",
-    "Threshold": "7000",
-    "Unit": "Milliseconds"
-   },
-   "Type": "AWS::CloudWatch::Alarm"
-  },
-  "ChaosLambdaErrorAlarm": {
-   "Properties": {
-    "AlarmActions": [
-     {
-      "Ref": "ChaosLambdaAlarmTopic"
-     }
-    ],
-    "AlarmDescription": "Enters ALARM state because we have received a lamdba error. See 'Errors' section on the following link: http://docs.aws.amazon.com/lambda/latest/dg/monitoring-functions-metrics.html for more information.",
-    "AlarmName": "chaosLambda/LambdaError",
-    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
-    "Dimensions": [
-     {
-      "Name": "FunctionName",
-      "Value": {
-       "Ref": "LambdaFunctionName"
-      }
-     }
-    ],
-    "EvaluationPeriods": "1",
-    "MetricName": "Errors",
-    "Namespace": "AWS/Lambda",
-    "Period": "60",
-    "Statistic": "Sum",
-    "Threshold": "1",
-    "Unit": "Count"
-   },
-   "Type": "AWS::CloudWatch::Alarm"
-  }
- }
+    "Description": "Chaos Lambda alarms",
+    "Parameters": {
+        "ChaosLambdaAlarmEmail": {
+            "Description": "Email address to notify if there are any operational issues",
+            "Type": "String"
+        },
+        "LambdaFunctionName": {
+            "Description": "The name of the lambda function",
+            "Type": "String"
+        }
+    },
+    "Resources": {
+        "ChaosLambdaAlarmTopic": {
+            "Properties": {
+                "Subscription": [
+                    {
+                        "Endpoint": {
+                            "Ref": "ChaosLambdaAlarmEmail"
+                        },
+                        "Protocol": "email"
+                    }
+                ]
+            },
+            "Type": "AWS::SNS::Topic"
+        },
+        "ChaosLambdaDurationAlarm": {
+            "Properties": {
+                "AlarmActions": [
+                    {
+                        "Ref": "ChaosLambdaAlarmTopic"
+                    }
+                ],
+                "AlarmDescription": "Enters ALARM state because we have functions taking longer than expected. Please adjust the available lambda process time accordingly, then replay any  failed events. See 'Duration' section on the  following link: http://docs.aws.amazon.com/lambda/latest/dg/monitoring-functions-metrics.html for more information.",
+                "AlarmName": "chaosLambda/LambdaDuration",
+                "ComparisonOperator": "GreaterThanThreshold",
+                "Dimensions": [
+                    {
+                        "Name": "FunctionName",
+                        "Value": {
+                            "Ref": "LambdaFunctionName"
+                        }
+                    }
+                ],
+                "EvaluationPeriods": "1",
+                "MetricName": "Duration",
+                "Namespace": "AWS/Lambda",
+                "Period": "60",
+                "Statistic": "Maximum",
+                "Threshold": "7000",
+                "Unit": "Milliseconds"
+            },
+            "Type": "AWS::CloudWatch::Alarm"
+        },
+        "ChaosLambdaErrorAlarm": {
+            "Properties": {
+                "AlarmActions": [
+                    {
+                        "Ref": "ChaosLambdaAlarmTopic"
+                    }
+                ],
+                "AlarmDescription": "Enters ALARM state because we have received a lamdba error. See 'Errors' section on the following link: http://docs.aws.amazon.com/lambda/latest/dg/monitoring-functions-metrics.html for more information.",
+                "AlarmName": "chaosLambda/LambdaError",
+                "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+                "Dimensions": [
+                    {
+                        "Name": "FunctionName",
+                        "Value": {
+                            "Ref": "LambdaFunctionName"
+                        }
+                    }
+                ],
+                "EvaluationPeriods": "1",
+                "MetricName": "Errors",
+                "Namespace": "AWS/Lambda",
+                "Period": "60",
+                "Statistic": "Sum",
+                "Threshold": "1",
+                "Unit": "Count"
+            },
+            "Type": "AWS::CloudWatch::Alarm"
+        }
+    }
 }

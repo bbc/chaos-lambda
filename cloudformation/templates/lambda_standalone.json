@@ -1,186 +1,186 @@
 {
- "Description": "Chaos Lambda",
- "Outputs": {
-  "ChaosLambdaFunctionOutput": {
-   "Description": "The Chaos Lambda Function",
-   "Value": {
-    "Ref": "ChaosLambdaFunction"
-   }
-  },
-  "ChaosLambdaRuleOutput": {
-   "Description": "Rule used to trigger the Chaos Lambda",
-   "Value": {
-    "Ref": "ChaosLambdaRule"
-   }
-  }
- },
- "Parameters": {
-  "DefaultProbability": {
-   "Default": 0.16666666666666666,
-   "Description": "Default termination probability",
-   "MaxValue": 1.0,
-   "MinValue": 0.0,
-   "Type": "Number"
-  },
-  "LogRetentionPeriod": {
-   "Default": 90,
-   "Description": "Log retention period",
-   "Type": "Number"
-  },
-  "Regions": {
-   "Description": "Override default region with comma-separated list of regions",
-   "Type": "String"
-  },
-  "Schedule": {
-   "Default": "cron(0 10-16 ? * MON-FRI *)",
-   "Description": "Schedule on which to run (UTC time zone)",
-   "Type": "String"
-  }
- },
- "Resources": {
-  "ChaosLambdaFunction": {
-   "Properties": {
-    "Code": {
-     "ZipFile": "from __future__ import print_function\n\nimport json\nimport os\nimport random\nimport time\n\nimport boto3\n\n\nPROBABILITY_TAG = \"chaos-lambda-termination\"\nDEFAULT_PROBABILITY = 1.0 / 6.0\n\n\ndef log(*args):\n timestamp = time.strftime(\"%Y-%m-%dT%H:%M:%SZ\", time.gmtime())\n print(timestamp, *args)\n\n\ndef get_asg_tag(asg, name, default=None):\n name = name.lower()\n for tag in asg.get(\"Tags\", []):\n  if tag.get(\"Key\", \"\").lower() == name:\n   return tag.get(\"Value\", \"\")\n return default\n\n\ndef safe_float(s, default):\n try:\n  return float(s)\n except ValueError:\n  return default\n\n\ndef get_asg_probability(asg, default):\n value = get_asg_tag(asg, PROBABILITY_TAG, None)\n if value is None:\n  return default\n\n probability = safe_float(value, None)\n if probability is not None and 0.0 <= probability <= 1.0:\n  return probability\n\n asg_name = asg[\"AutoScalingGroupName\"]\n log(\"bad-probability\", \"[\" + value + \"]\", \"in\", asg_name)\n return default\n\n\ndef get_asg_instance_id(asg, default):\n instances = asg.get(\"Instances\", [])\n if len(instances) == 0:\n  return None\n\n probability = get_asg_probability(asg, default)\n if random.random() >= probability:\n  return None\n else:\n  return random.choice(instances).get(\"InstanceId\", None)\n\n\ndef get_all_asgs(autoscaling):\n paginator = autoscaling.get_paginator(\"describe_auto_scaling_groups\")\n for response in paginator.paginate():\n  for asg in response.get(\"AutoScalingGroups\", []):\n   yield asg\n\n\ndef get_targets(autoscaling, default_probability):\n targets = []\n for asg in get_all_asgs(autoscaling):\n  instance_id = get_asg_instance_id(asg, default_probability)\n  if instance_id is not None:\n   targets.append((asg[\"AutoScalingGroupName\"], instance_id))\n return targets\n\n\ndef send_notification(sns, instance_id, asg_name):\n topic = os.environ.get(\"termination_topic_arn\", \"\").strip()\n if topic == '':\n  return\n notification = {\n  \"event_name\": \"chaos_lambda.terminating\",\n  \"instance_id\": instance_id,\n  \"asg_name\": asg_name,\n }\n sns.publish(\n  TopicArn=topic,\n  Message=json.dumps(notification)\n )\n\n\ndef terminate_targets(ec2, sns, targets):\n for asg_name, instance_id in targets:\n  log(\"targeting\", instance_id, \"in\", asg_name)\n  try:\n   send_notification(sns, instance_id, asg_name)\n  except Exception as e:\n   log(\"Failed to send notification\", e)\n\n instance_ids = [instance_id for (asg_name, instance_id) in targets]\n response = ec2.terminate_instances(InstanceIds=instance_ids)\n\n results = []\n for i in response.get(\"TerminatingInstances\", []):\n  results.append((i[\"InstanceId\"], i[\"CurrentState\"][\"Name\"]))\n\n for instance_id, state in results:\n  log(\"result\", instance_id, \"is\", state)\n\n return results\n\n\ndef chaos_lambda(regions, default_probability):\n for region in regions:\n  log(\"triggered\", region)\n  autoscaling = boto3.client(\"autoscaling\", region_name=region)\n  targets = get_targets(autoscaling, default_probability)\n  if len(targets) != 0:\n   ec2 = boto3.client(\"ec2\", region_name=region)\n   sns = boto3.client(\"sns\", region_name=region)\n   terminate_targets(ec2, sns, targets)\n\n\ndef get_regions(context):\n v = os.environ.get(\"regions\", \"\").strip()\n if len(v) == 0:\n  return [context.invoked_function_arn.split(\":\")[3]]\n else:\n  return list(filter(None, [s.strip() for s in v.split(\",\")]))\n\n\ndef get_default_probability():\n v = os.environ.get(\"probability\", \"\").strip()\n if len(v) == 0:\n  return DEFAULT_PROBABILITY\n else:\n  return float(v)\n\n\ndef handler(event, context):\n regions = get_regions(context)\n probability = get_default_probability()\n chaos_lambda(regions, probability)\n"
-    },
-    "Description": "CloudFormation Lambda",
-    "Environment": {
-     "Variables": {
-      "probability": {
-       "Ref": "DefaultProbability"
-      },
-      "regions": {
-       "Ref": "Regions"
-      },
-      "termination_topic_arn": {
-       "Ref": "ChaosLambdaTerminationTopic"
-      }
-     }
-    },
-    "FunctionName": "chaos-lambda",
-    "Handler": "index.handler",
-    "MemorySize": 128,
-    "Role": {
-     "Fn::GetAtt": [
-      "ChaosLambdaRole",
-      "Arn"
-     ]
-    },
-    "Runtime": "python3.8",
-    "Timeout": 30
-   },
-   "Type": "AWS::Lambda::Function"
-  },
-  "ChaosLambdaLogGroup": {
-   "Properties": {
-    "LogGroupName": "aws/lambda/chaos-lambda",
-    "RetentionInDays": {
-     "Ref": "LogRetentionPeriod"
-    }
-   },
-   "Type": "AWS::Logs::LogGroup"
-  },
-  "ChaosLambdaRole": {
-   "Properties": {
-    "AssumeRolePolicyDocument": {
-     "Statement": [
-      {
-       "Action": [
-        "sts:AssumeRole"
-       ],
-       "Effect": "Allow",
-       "Principal": {
-        "Service": [
-         "lambda.amazonaws.com"
-        ]
-       }
-      }
-     ],
-     "Version": "2012-10-17"
-    },
-    "Path": "/lambda/",
-    "Policies": [
-     {
-      "PolicyDocument": {
-       "Statement": [
-        {
-         "Action": [
-          "logs:CreateLogGroup",
-          "logs:CreateLogStream",
-          "logs:PutLogEvents"
-         ],
-         "Effect": "Allow",
-         "Resource": "arn:aws:logs:*:*:*"
+    "Description": "Chaos Lambda",
+    "Outputs": {
+        "ChaosLambdaFunctionOutput": {
+            "Description": "The Chaos Lambda Function",
+            "Value": {
+                "Ref": "ChaosLambdaFunction"
+            }
         },
-        {
-         "Action": [
-          "ses:SendEmail",
-          "ec2:TerminateInstances",
-          "autoscaling:DescribeAutoScalingGroups"
-         ],
-         "Effect": "Allow",
-         "Resource": "*"
-        },
-        {
-         "Action": [
-          "sns:Publish"
-         ],
-         "Effect": "Allow",
-         "Resource": {
-          "Ref": "ChaosLambdaTerminationTopic"
-         }
+        "ChaosLambdaRuleOutput": {
+            "Description": "Rule used to trigger the Chaos Lambda",
+            "Value": {
+                "Ref": "ChaosLambdaRule"
+            }
         }
-       ],
-       "Version": "2012-10-17"
-      },
-      "PolicyName": "ChaosLambdaPolicy"
-     }
-    ]
-   },
-   "Type": "AWS::IAM::Role"
-  },
-  "ChaosLambdaRule": {
-   "Properties": {
-    "Description": "Trigger Chaos Lambda according to a schedule",
-    "ScheduleExpression": {
-     "Ref": "Schedule"
     },
-    "State": "ENABLED",
-    "Targets": [
-     {
-      "Arn": {
-       "Fn::GetAtt": [
-        "ChaosLambdaFunction",
-        "Arn"
-       ]
-      },
-      "Id": "ChaosLambdaRuleTarget"
-     }
-    ]
-   },
-   "Type": "AWS::Events::Rule"
-  },
-  "ChaosLambdaRulePermission": {
-   "Properties": {
-    "Action": "lambda:InvokeFunction",
-    "FunctionName": {
-     "Fn::GetAtt": [
-      "ChaosLambdaFunction",
-      "Arn"
-     ]
+    "Parameters": {
+        "DefaultProbability": {
+            "Default": 0.16666666666666666,
+            "Description": "Default termination probability",
+            "MaxValue": 1.0,
+            "MinValue": 0.0,
+            "Type": "Number"
+        },
+        "LogRetentionPeriod": {
+            "Default": 90,
+            "Description": "Log retention period",
+            "Type": "Number"
+        },
+        "Regions": {
+            "Description": "Override default region with comma-separated list of regions",
+            "Type": "String"
+        },
+        "Schedule": {
+            "Default": "cron(0 10-16 ? * MON-FRI *)",
+            "Description": "Schedule on which to run (UTC time zone)",
+            "Type": "String"
+        }
     },
-    "Principal": "events.amazonaws.com",
-    "SourceArn": {
-     "Fn::GetAtt": [
-      "ChaosLambdaRule",
-      "Arn"
-     ]
+    "Resources": {
+        "ChaosLambdaFunction": {
+            "Properties": {
+                "Code": {
+                    "ZipFile": "from __future__ import print_function\n\nimport json\nimport os\nimport random\nimport time\n\nimport boto3\n\n\nPROBABILITY_TAG = \"chaos-lambda-termination\"\nDEFAULT_PROBABILITY = 1.0 / 6.0\n\n\ndef log(*args):\n timestamp = time.strftime(\"%Y-%m-%dT%H:%M:%SZ\", time.gmtime())\n print(timestamp, *args)\n\n\ndef get_asg_tag(asg, name, default=None):\n name = name.lower()\n for tag in asg.get(\"Tags\", []):\n  if tag.get(\"Key\", \"\").lower() == name:\n   return tag.get(\"Value\", \"\")\n return default\n\n\ndef safe_float(s, default):\n try:\n  return float(s)\n except ValueError:\n  return default\n\n\ndef get_asg_probability(asg, default):\n value = get_asg_tag(asg, PROBABILITY_TAG, None)\n if value is None:\n  return default\n\n probability = safe_float(value, None)\n if probability is not None and 0.0 <= probability <= 1.0:\n  return probability\n\n asg_name = asg[\"AutoScalingGroupName\"]\n log(\"bad-probability\", \"[\" + value + \"]\", \"in\", asg_name)\n return default\n\n\ndef get_asg_instance_id(asg, default):\n instances = asg.get(\"Instances\", [])\n if len(instances) == 0:\n  return None\n\n probability = get_asg_probability(asg, default)\n if random.random() >= probability:\n  return None\n else:\n  return random.choice(instances).get(\"InstanceId\", None)\n\n\ndef get_all_asgs(autoscaling):\n paginator = autoscaling.get_paginator(\"describe_auto_scaling_groups\")\n for response in paginator.paginate():\n  for asg in response.get(\"AutoScalingGroups\", []):\n   yield asg\n\n\ndef get_targets(autoscaling, default_probability):\n targets = []\n for asg in get_all_asgs(autoscaling):\n  instance_id = get_asg_instance_id(asg, default_probability)\n  if instance_id is not None:\n   targets.append((asg[\"AutoScalingGroupName\"], instance_id))\n return targets\n\n\ndef send_notification(sns, instance_id, asg_name):\n topic = os.environ.get(\"termination_topic_arn\", \"\").strip()\n if topic == '':\n  return\n notification = {\n  \"event_name\": \"chaos_lambda.terminating\",\n  \"instance_id\": instance_id,\n  \"asg_name\": asg_name,\n }\n sns.publish(\n  TopicArn=topic,\n  Message=json.dumps(notification)\n )\n\n\ndef terminate_targets(ec2, sns, targets):\n for asg_name, instance_id in targets:\n  log(\"targeting\", instance_id, \"in\", asg_name)\n  try:\n   send_notification(sns, instance_id, asg_name)\n  except Exception as e:\n   log(\"Failed to send notification\", e)\n\n instance_ids = [instance_id for (asg_name, instance_id) in targets]\n response = ec2.terminate_instances(InstanceIds=instance_ids)\n\n results = []\n for i in response.get(\"TerminatingInstances\", []):\n  results.append((i[\"InstanceId\"], i[\"CurrentState\"][\"Name\"]))\n\n for instance_id, state in results:\n  log(\"result\", instance_id, \"is\", state)\n\n return results\n\n\ndef chaos_lambda(regions, default_probability):\n for region in regions:\n  log(\"triggered\", region)\n  autoscaling = boto3.client(\"autoscaling\", region_name=region)\n  targets = get_targets(autoscaling, default_probability)\n  if len(targets) != 0:\n   ec2 = boto3.client(\"ec2\", region_name=region)\n   sns = boto3.client(\"sns\", region_name=region)\n   terminate_targets(ec2, sns, targets)\n\n\ndef get_regions(context):\n v = os.environ.get(\"regions\", \"\").strip()\n if len(v) == 0:\n  return [context.invoked_function_arn.split(\":\")[3]]\n else:\n  return list(filter(None, [s.strip() for s in v.split(\",\")]))\n\n\ndef get_default_probability():\n v = os.environ.get(\"probability\", \"\").strip()\n if len(v) == 0:\n  return DEFAULT_PROBABILITY\n else:\n  return float(v)\n\n\ndef handler(event, context):\n regions = get_regions(context)\n probability = get_default_probability()\n chaos_lambda(regions, probability)\n"
+                },
+                "Description": "CloudFormation Lambda",
+                "Environment": {
+                    "Variables": {
+                        "probability": {
+                            "Ref": "DefaultProbability"
+                        },
+                        "regions": {
+                            "Ref": "Regions"
+                        },
+                        "termination_topic_arn": {
+                            "Ref": "ChaosLambdaTerminationTopic"
+                        }
+                    }
+                },
+                "FunctionName": "chaos-lambda",
+                "Handler": "index.handler",
+                "MemorySize": 128,
+                "Role": {
+                    "Fn::GetAtt": [
+                        "ChaosLambdaRole",
+                        "Arn"
+                    ]
+                },
+                "Runtime": "python3.8",
+                "Timeout": 30
+            },
+            "Type": "AWS::Lambda::Function"
+        },
+        "ChaosLambdaLogGroup": {
+            "Properties": {
+                "LogGroupName": "aws/lambda/chaos-lambda",
+                "RetentionInDays": {
+                    "Ref": "LogRetentionPeriod"
+                }
+            },
+            "Type": "AWS::Logs::LogGroup"
+        },
+        "ChaosLambdaRole": {
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ],
+                    "Version": "2012-10-17"
+                },
+                "Path": "/lambda/",
+                "Policies": [
+                    {
+                        "PolicyDocument": {
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "logs:CreateLogGroup",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": "arn:aws:logs:*:*:*"
+                                },
+                                {
+                                    "Action": [
+                                        "ses:SendEmail",
+                                        "ec2:TerminateInstances",
+                                        "autoscaling:DescribeAutoScalingGroups"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": "*"
+                                },
+                                {
+                                    "Action": [
+                                        "sns:Publish"
+                                    ],
+                                    "Effect": "Allow",
+                                    "Resource": {
+                                        "Ref": "ChaosLambdaTerminationTopic"
+                                    }
+                                }
+                            ],
+                            "Version": "2012-10-17"
+                        },
+                        "PolicyName": "ChaosLambdaPolicy"
+                    }
+                ]
+            },
+            "Type": "AWS::IAM::Role"
+        },
+        "ChaosLambdaRule": {
+            "Properties": {
+                "Description": "Trigger Chaos Lambda according to a schedule",
+                "ScheduleExpression": {
+                    "Ref": "Schedule"
+                },
+                "State": "ENABLED",
+                "Targets": [
+                    {
+                        "Arn": {
+                            "Fn::GetAtt": [
+                                "ChaosLambdaFunction",
+                                "Arn"
+                            ]
+                        },
+                        "Id": "ChaosLambdaRuleTarget"
+                    }
+                ]
+            },
+            "Type": "AWS::Events::Rule"
+        },
+        "ChaosLambdaRulePermission": {
+            "Properties": {
+                "Action": "lambda:InvokeFunction",
+                "FunctionName": {
+                    "Fn::GetAtt": [
+                        "ChaosLambdaFunction",
+                        "Arn"
+                    ]
+                },
+                "Principal": "events.amazonaws.com",
+                "SourceArn": {
+                    "Fn::GetAtt": [
+                        "ChaosLambdaRule",
+                        "Arn"
+                    ]
+                }
+            },
+            "Type": "AWS::Lambda::Permission"
+        },
+        "ChaosLambdaTerminationTopic": {
+            "Type": "AWS::SNS::Topic"
+        }
     }
-   },
-   "Type": "AWS::Lambda::Permission"
-  },
-  "ChaosLambdaTerminationTopic": {
-   "Type": "AWS::SNS::Topic"
-  }
- }
 }

@@ -1,27 +1,27 @@
 {
- "Description": "Metrics and filters for Chaos Lambda",
- "Parameters": {
-  "LambdaLogGroupName": {
-   "Description": "The name of the log group for the lambda function.",
-   "Type": "String"
-  }
- },
- "Resources": {
-  "liveliness": {
-   "Properties": {
-    "FilterPattern": "[datetime, event=\"triggered\", ...]",
-    "LogGroupName": {
-     "Ref": "LambdaLogGroupName"
+    "Description": "Metrics and filters for Chaos Lambda",
+    "Parameters": {
+        "LambdaLogGroupName": {
+            "Description": "The name of the log group for the lambda function.",
+            "Type": "String"
+        }
     },
-    "MetricTransformations": [
-     {
-      "MetricName": "triggered",
-      "MetricNamespace": "BBC/CHAOS-LAMBDA",
-      "MetricValue": "1"
-     }
-    ]
-   },
-   "Type": "AWS::Logs::MetricFilter"
-  }
- }
+    "Resources": {
+        "liveliness": {
+            "Properties": {
+                "FilterPattern": "[datetime, event=\"triggered\", ...]",
+                "LogGroupName": {
+                    "Ref": "LambdaLogGroupName"
+                },
+                "MetricTransformations": [
+                    {
+                        "MetricName": "triggered",
+                        "MetricNamespace": "BBC/CHAOS-LAMBDA",
+                        "MetricValue": "1"
+                    }
+                ]
+            },
+            "Type": "AWS::Logs::MetricFilter"
+        }
+    }
 }
