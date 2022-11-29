@@ -1,193 +1,182 @@
 {
- "Description": "Chaos Lambda",
- "Outputs": {
-  "ChaosLambdaFunctionOutput": {
-   "Description": "The Chaos Lambda Function",
-   "Value": {
-    "Ref": "ChaosLambdaFunction"
-   }
-  },
-  "ChaosLambdaRuleOutput": {
-   "Description": "Rule used to trigger the Chaos Lambda",
-   "Value": {
-    "Ref": "ChaosLambdaRule"
-   }
-  }
- },
- "Parameters": {
-  "DefaultProbability": {
-   "Default": 0.16666666666666666,
-   "Description": "Default termination probability",
-   "MaxValue": 1.0,
-   "MinValue": 0.0,
-   "Type": "Number"
-  },
-  "Regions": {
-   "Description": "Override default region with comma-separated list of regions",
-   "Type": "String"
-  },
-  "S3Bucket": {
-   "Description": "Name of the S3 bucket containing the Lambda zip file",
-   "Type": "String"
-  },
-  "S3Key": {
-   "Default": "chaos-lambda.zip",
-   "Description": "Path to the Lambda zip file under the bucket",
-   "Type": "String"
-  },
-  "Schedule": {
-   "Default": "cron(0 10-16 ? * MON-FRI *)",
-   "Description": "Schedule on which to run (UTC time zone)",
-   "Type": "String"
-  }
- },
- "Resources": {
-  "ChaosLambdaFunction": {
-   "Properties": {
-    "Code": {
-     "S3Bucket": {
-      "Ref": "S3Bucket"
-     },
-     "S3Key": {
-      "Ref": "S3Key"
-     }
-    },
-    "Description": "CloudFormation Lambda",
-    "Environment": {
-     "Variables": {
-      "probability": {
-       "Ref": "DefaultProbability"
-      },
-      "regions": {
-       "Ref": "Regions"
-      },
-      "termination_topic_arn": {
-       "Ref": "ChaosLambdaTerminationTopic"
+  "Description": "Chaos Lambda",
+  "Outputs": {
+    "ChaosLambdaFunctionOutput": {
+      "Description": "The Chaos Lambda Function",
+      "Value": {
+        "Ref": "ChaosLambdaFunction"
       }
-     }
     },
-    "FunctionName": "chaos-lambda",
-    "Handler": "chaos.handler",
-    "MemorySize": 128,
-    "Role": {
-     "Fn::GetAtt": [
-      "ChaosLambdaRole",
-      "Arn"
-     ]
-    },
-    "Runtime": "python3.8",
-    "Timeout": 30
-   },
-   "Type": "AWS::Lambda::Function"
-  },
-  "ChaosLambdaLogGroup": {
-   "Properties": {
-    "LogGroupName": "aws/lambda/chaos-lambda",
-    "RetentionInDays": 90
-   },
-   "Type": "AWS::Logs::LogGroup"
-  },
-  "ChaosLambdaRole": {
-   "Properties": {
-    "AssumeRolePolicyDocument": {
-     "Statement": [
-      {
-       "Action": [
-        "sts:AssumeRole"
-       ],
-       "Effect": "Allow",
-       "Principal": {
-        "Service": [
-         "lambda.amazonaws.com"
-        ]
-       }
+    "ChaosLambdaRuleOutput": {
+      "Description": "Rule used to trigger the Chaos Lambda",
+      "Value": {
+        "Ref": "ChaosLambdaRule"
       }
-     ],
-     "Version": "2012-10-17"
-    },
-    "Path": "/lambda/",
-    "Policies": [
-     {
-      "PolicyDocument": {
-       "Statement": [
-        {
-         "Action": [
-          "logs:CreateLogGroup",
-          "logs:CreateLogStream",
-          "logs:PutLogEvents"
-         ],
-         "Effect": "Allow",
-         "Resource": "arn:aws:logs:*:*:*"
-        },
-        {
-         "Action": [
-          "ses:SendEmail",
-          "ec2:TerminateInstances",
-          "autoscaling:DescribeAutoScalingGroups"
-         ],
-         "Effect": "Allow",
-         "Resource": "*"
-        },
-        {
-         "Action": [
-          "sns:Publish"
-         ],
-         "Effect": "Allow",
-         "Resource": {
-          "Ref": "ChaosLambdaTerminationTopic"
-         }
-        }
-       ],
-       "Version": "2012-10-17"
-      },
-      "PolicyName": "ChaosLambdaPolicy"
-     }
-    ]
-   },
-   "Type": "AWS::IAM::Role"
-  },
-  "ChaosLambdaRule": {
-   "Properties": {
-    "Description": "Trigger Chaos Lambda according to a schedule",
-    "ScheduleExpression": {
-     "Ref": "Schedule"
-    },
-    "State": "ENABLED",
-    "Targets": [
-     {
-      "Arn": {
-       "Fn::GetAtt": [
-        "ChaosLambdaFunction",
-        "Arn"
-       ]
-      },
-      "Id": "ChaosLambdaRuleTarget"
-     }
-    ]
-   },
-   "Type": "AWS::Events::Rule"
-  },
-  "ChaosLambdaRulePermission": {
-   "Properties": {
-    "Action": "lambda:InvokeFunction",
-    "FunctionName": {
-     "Fn::GetAtt": [
-      "ChaosLambdaFunction",
-      "Arn"
-     ]
-    },
-    "Principal": "events.amazonaws.com",
-    "SourceArn": {
-     "Fn::GetAtt": [
-      "ChaosLambdaRule",
-      "Arn"
-     ]
     }
-   },
-   "Type": "AWS::Lambda::Permission"
   },
-  "ChaosLambdaTerminationTopic": {
-   "Type": "AWS::SNS::Topic"
+  "Parameters": {
+    "DefaultProbability": {
+      "Default": 0.16666666666666666,
+      "Description": "Default termination probability",
+      "MaxValue": 1.0,
+      "MinValue": 0.0,
+      "Type": "Number"
+    },
+    "LogRetentionPeriod": {
+      "Default": 90,
+      "Description": "Log retention period",
+      "Type": "Number"
+    },
+    "Regions": {
+      "Description": "Override default region with comma-separated list of regions",
+      "Type": "String"
+    },
+    "S3Bucket": {
+      "Description": "Name of the S3 bucket containing the Lambda zip file",
+      "Type": "String"
+    },
+    "S3Key": {
+      "Default": "chaos-lambda.zip",
+      "Description": "Path to the Lambda zip file under the bucket",
+      "Type": "String"
+    },
+    "Schedule": {
+      "Default": "cron(0 10-16 ? * MON-FRI *)",
+      "Description": "Schedule on which to run (UTC time zone)",
+      "Type": "String"
+    }
+  },
+  "Resources": {
+    "ChaosLambdaFunction": {
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "S3Bucket"
+          },
+          "S3Key": {
+            "Ref": "S3Key"
+          }
+        },
+        "Description": "CloudFormation Lambda",
+        "Environment": {
+          "Variables": {
+            "probability": {
+              "Ref": "DefaultProbability"
+            },
+            "regions": {
+              "Ref": "Regions"
+            },
+            "termination_topic_arn": {
+              "Ref": "ChaosLambdaTerminationTopic"
+            }
+          }
+        },
+        "FunctionName": "chaos-lambda",
+        "Handler": "chaos.handler",
+        "MemorySize": 128,
+        "Role": {
+          "Fn::GetAtt": ["ChaosLambdaRole", "Arn"]
+        },
+        "Runtime": "python3.8",
+        "Timeout": 30
+      },
+      "Type": "AWS::Lambda::Function"
+    },
+    "ChaosLambdaLogGroup": {
+      "Properties": {
+        "LogGroupName": "aws/lambda/chaos-lambda",
+        "RetentionInDays": {
+          "Ref": "LogRetentionPeriod"
+        }
+      },
+      "Type": "AWS::Logs::LogGroup"
+    },
+    "ChaosLambdaRole": {
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Statement": [
+            {
+              "Action": ["sts:AssumeRole"],
+              "Effect": "Allow",
+              "Principal": {
+                "Service": ["lambda.amazonaws.com"]
+              }
+            }
+          ],
+          "Version": "2012-10-17"
+        },
+        "Path": "/lambda/",
+        "Policies": [
+          {
+            "PolicyDocument": {
+              "Statement": [
+                {
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": "arn:aws:logs:*:*:*"
+                },
+                {
+                  "Action": [
+                    "ses:SendEmail",
+                    "ec2:TerminateInstances",
+                    "autoscaling:DescribeAutoScalingGroups"
+                  ],
+                  "Effect": "Allow",
+                  "Resource": "*"
+                },
+                {
+                  "Action": ["sns:Publish"],
+                  "Effect": "Allow",
+                  "Resource": {
+                    "Ref": "ChaosLambdaTerminationTopic"
+                  }
+                }
+              ],
+              "Version": "2012-10-17"
+            },
+            "PolicyName": "ChaosLambdaPolicy"
+          }
+        ]
+      },
+      "Type": "AWS::IAM::Role"
+    },
+    "ChaosLambdaRule": {
+      "Properties": {
+        "Description": "Trigger Chaos Lambda according to a schedule",
+        "ScheduleExpression": {
+          "Ref": "Schedule"
+        },
+        "State": "ENABLED",
+        "Targets": [
+          {
+            "Arn": {
+              "Fn::GetAtt": ["ChaosLambdaFunction", "Arn"]
+            },
+            "Id": "ChaosLambdaRuleTarget"
+          }
+        ]
+      },
+      "Type": "AWS::Events::Rule"
+    },
+    "ChaosLambdaRulePermission": {
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Fn::GetAtt": ["ChaosLambdaFunction", "Arn"]
+        },
+        "Principal": "events.amazonaws.com",
+        "SourceArn": {
+          "Fn::GetAtt": ["ChaosLambdaRule", "Arn"]
+        }
+      },
+      "Type": "AWS::Lambda::Permission"
+    },
+    "ChaosLambdaTerminationTopic": {
+      "Type": "AWS::SNS::Topic"
+    }
   }
- }
 }
