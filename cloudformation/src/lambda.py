@@ -62,6 +62,13 @@ regions = t.add_parameter(Parameter(
     Type="String"
 ))
 
+log_retention_period = t.add_parameter(Parameter(
+    "LogRetentionPeriod",
+    Description="Log retention period",
+    Default=90,
+    Type="Number"
+))
+
 termination_topic = t.add_resource(
     Topic("ChaosLambdaTerminationTopic")
 )
@@ -120,7 +127,7 @@ t.add_resource(lambda_role)
 t.add_resource(LogGroup(
     "ChaosLambdaLogGroup",
     LogGroupName="aws/lambda/chaos-lambda",
-    RetentionInDays=90,
+    RetentionInDays=Ref(log_retention_period),
 ))
 
 lambda_function = t.add_resource(Function(

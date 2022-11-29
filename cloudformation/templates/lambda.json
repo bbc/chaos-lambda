@@ -22,6 +22,11 @@
             "MinValue": 0.0,
             "Type": "Number"
         },
+        "LogRetentionPeriod": {
+            "Default": 90,
+            "Description": "Log retention period",
+            "Type": "Number"
+        },
         "Regions": {
             "Description": "Override default region with comma-separated list of regions",
             "Type": "String"
@@ -83,7 +88,9 @@
         "ChaosLambdaLogGroup": {
             "Properties": {
                 "LogGroupName": "aws/lambda/chaos-lambda",
-                "RetentionInDays": 90
+                "RetentionInDays": {
+                    "Ref": "LogRetentionPeriod"
+                }
             },
             "Type": "AWS::Logs::LogGroup"
         },
