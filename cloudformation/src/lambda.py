@@ -1,7 +1,7 @@
 import re
 import sys
 
-from troposphere import GetAtt, Output, Parameter, Ref, Template
+from troposphere import GetAtt, Output, Parameter, Ref, Template, Sub
 from troposphere.awslambda import Code, Environment, Function, Permission
 from troposphere.logs import LogGroup
 from troposphere.iam import Role, Policy
@@ -69,6 +69,13 @@ log_retention_period = t.add_parameter(Parameter(
     Type="Number"
 ))
 
+function_name = t.add_parameter(Parameter(
+    "LambdaFunctionName",
+    Description="The lambda function name",
+    Default="chaos-lamnda",
+    Type="String"
+))
+
 termination_topic = t.add_resource(
     Topic("ChaosLambdaTerminationTopic")
 )
@@ -126,14 +133,14 @@ t.add_resource(lambda_role)
 
 t.add_resource(LogGroup(
     "ChaosLambdaLogGroup",
-    LogGroupName="aws/lambda/chaos-lambda",
+    LogGroupName=Sub("/aws/lambda/${FunctionName}", FunctionName=Ref(function_name)),
     RetentionInDays=Ref(log_retention_period),
 ))
 
 lambda_function = t.add_resource(Function(
     "ChaosLambdaFunction",
     Description="CloudFormation Lambda",
-    FunctionName="chaos-lambda",
+    FunctionName=Ref(function_name),
     Code=lambda_code,
     Environment=Environment(Variables={
         "probability": Ref(default_probability),

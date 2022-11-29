@@ -22,6 +22,11 @@
             "MinValue": 0.0,
             "Type": "Number"
         },
+        "LambdaFunctionName": {
+            "Default": "chaos-lamnda",
+            "Description": "The lambda function name",
+            "Type": "String"
+        },
         "LogRetentionPeriod": {
             "Default": 90,
             "Description": "Log retention period",
@@ -57,7 +62,9 @@
                         }
                     }
                 },
-                "FunctionName": "chaos-lambda",
+                "FunctionName": {
+                    "Ref": "LambdaFunctionName"
+                },
                 "Handler": "index.handler",
                 "MemorySize": 128,
                 "Role": {
@@ -73,7 +80,16 @@
         },
         "ChaosLambdaLogGroup": {
             "Properties": {
-                "LogGroupName": "aws/lambda/chaos-lambda",
+                "LogGroupName": {
+                    "Fn::Sub": [
+                        "/aws/lambda/${FunctionName}",
+                        {
+                            "FunctionName": {
+                                "Ref": "LambdaFunctionName"
+                            }
+                        }
+                    ]
+                },
                 "RetentionInDays": {
                     "Ref": "LogRetentionPeriod"
                 }
