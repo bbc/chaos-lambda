@@ -22,11 +22,6 @@
             "MinValue": 0.0,
             "Type": "Number"
         },
-        "LambdaFunctionName": {
-            "Default": "chaos-lambda",
-            "Description": "The lambda function name",
-            "Type": "String"
-        },
         "LogRetentionPeriod": {
             "Default": 90,
             "Description": "Log retention period",
@@ -53,6 +48,7 @@
     },
     "Resources": {
         "ChaosLambdaFunction": {
+            "DependsOn": "ChaosLambdaLogGroup",
             "Properties": {
                 "Code": {
                     "S3Bucket": {
@@ -77,7 +73,7 @@
                     }
                 },
                 "FunctionName": {
-                    "Ref": "LambdaFunctionName"
+                    "Fn::Sub": "${AWS::StackName}-function"
                 },
                 "Handler": "chaos.handler",
                 "MemorySize": 128,
@@ -95,14 +91,7 @@
         "ChaosLambdaLogGroup": {
             "Properties": {
                 "LogGroupName": {
-                    "Fn::Sub": [
-                        "/aws/lambda/${FunctionName}",
-                        {
-                            "FunctionName": {
-                                "Ref": "LambdaFunctionName"
-                            }
-                        }
-                    ]
+                    "Fn::Sub": "/aws/lambda/${AWS::StackName}-function"
                 },
                 "RetentionInDays": {
                     "Ref": "LogRetentionPeriod"
