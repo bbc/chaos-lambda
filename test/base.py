@@ -1,3 +1,4 @@
+import contextlib
 import sys
 from unittest import TestCase
 from unittest.mock import Mock, patch
@@ -19,6 +20,16 @@ class PatchingTestCase(TestCase):
             p.stop()
 
 
-def mock_imports(module_names):
+@contextlib.contextmanager
+def mocked_imports(module_names):
+    old = {}
+    mocks = {}
     for name in module_names:
-        sys.modules[name] = Mock()
+        old[name] = sys.modules.get(name, None)
+        sys.modules[name] = mocks[name] = Mock()
+    yield mocks
+    for name, module in old.items():
+        if module is None:
+            del sys.modules[name]
+        else:
+            sys.modules[name] = module

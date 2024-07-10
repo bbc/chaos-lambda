@@ -1,17 +1,14 @@
-from __future__ import print_function
-
 import json
 import re
 
 from unittest import mock
 
-from base import mock_imports, PatchingTestCase
+from base import mocked_imports, PatchingTestCase
 
-mock_imports([
+with mocked_imports([
     "boto3"
-])  # noqa
-
-import chaos
+]):
+    import chaos
 
 
 class TestGetASGTag(PatchingTestCase):
