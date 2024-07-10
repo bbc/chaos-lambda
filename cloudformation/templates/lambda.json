@@ -83,7 +83,7 @@
                         "Arn"
                     ]
                 },
-                "Runtime": "python3.8",
+                "Runtime": "python3.11",
                 "Timeout": 30
             },
             "Type": "AWS::Lambda::Function"

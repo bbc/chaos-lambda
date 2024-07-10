@@ -143,7 +143,7 @@ lambda_function = t.add_resource(Function(
     Handler=module_name + ".handler",
     MemorySize=128,
     Role=GetAtt(lambda_role, "Arn"),
-    Runtime="python3.8",
+    Runtime="python3.11",
     Timeout=30,
     DependsOn=lambda_log_group.title
 ))
